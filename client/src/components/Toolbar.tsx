@@ -1,0 +1,527 @@
+import React, { useState } from 'react';
+import type { Tool } from '../types';
+import { PRESET_COLORS, STROKE_WIDTHS } from '../types';
+
+interface ToolbarProps {
+    currentTool: Tool;
+    currentColor: string;
+    strokeWidth: number;
+    onToolChange: (tool: Tool) => void;
+    onColorChange: (color: string) => void;
+    onStrokeWidthChange: (width: number) => void;
+    onUndo: () => void;
+    onRedo: () => void;
+    onClear: () => void;
+    onSave: () => void;
+    onDownload: () => void;
+    canUndo: boolean;
+    canRedo: boolean;
+    isMobile?: boolean;
+    isDarkTheme: boolean;
+    onToggleTheme: () => void;
+}
+
+export const Toolbar: React.FC<ToolbarProps> = ({
+    currentTool,
+    currentColor,
+    strokeWidth,
+    onToolChange,
+    onColorChange,
+    onStrokeWidthChange,
+    onUndo,
+    onRedo,
+    onClear,
+    onSave,
+    onDownload,
+    canUndo,
+    canRedo,
+    isMobile = false,
+    isDarkTheme,
+    onToggleTheme,
+}) => {
+    const [showColorPicker, setShowColorPicker] = useState(false);
+    const [showSizePicker, setShowSizePicker] = useState(false);
+
+    const tools: { id: Tool; icon: string; label: string }[] = [
+        { id: 'brush', icon: '🖌️', label: 'Brush' },
+        { id: 'eraser', icon: '🧹', label: 'Eraser' },
+        { id: 'line', icon: '📏', label: 'Line' },
+        { id: 'rectangle', icon: '⬜', label: 'Rectangle' },
+        { id: 'circle', icon: '⭕', label: 'Circle' },
+        { id: 'text', icon: '📝', label: 'Text' },
+    ];
+
+    // Mobile Bottom Toolbar
+    if (isMobile) {
+        return (
+            <>
+                <div style={{
+                    backgroundColor: isDarkTheme ? 'rgba(26, 26, 46, 0.98)' : 'rgba(255, 255, 255, 0.95)',
+                    backdropFilter: 'blur(12px)',
+                    borderTop: isDarkTheme ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
+                    padding: '8px',
+                    paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    flexShrink: 0,
+                }}>
+                    {/* Tools Row */}
+                    <div style={{
+                        display: 'flex',
+                        gap: '6px',
+                        overflowX: 'auto',
+                        WebkitOverflowScrolling: 'touch',
+                        scrollbarWidth: 'none',
+                        msOverflowStyle: 'none',
+                    }}>
+                        {tools.map((tool) => (
+                            <button
+                                key={tool.id}
+                                onClick={() => onToolChange(tool.id)}
+                                style={{
+                                    width: '44px',
+                                    height: '44px',
+                                    borderRadius: '10px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '18px',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    flexShrink: 0,
+                                    backgroundColor: currentTool === tool.id ? '#6366f1' : (isDarkTheme ? '#374151' : '#f3f4f6'),
+                                    boxShadow: currentTool === tool.id ? '0 4px 12px rgba(99, 102, 241, 0.4)' : 'none',
+                                    color: currentTool === tool.id ? 'white' : (isDarkTheme ? 'white' : '#374151'),
+                                    WebkitTapHighlightColor: 'transparent',
+                                }}
+                                title={tool.label}
+                            >
+                                {tool.icon}
+                            </button>
+                        ))}
+
+                        {/* Color Button */}
+                        <button
+                            onClick={() => { setShowColorPicker(!showColorPicker); setShowSizePicker(false); }}
+                            style={{
+                                width: '44px',
+                                height: '44px',
+                                borderRadius: '10px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                border: showColorPicker ? '2px solid #6366f1' : '2px solid #374151',
+                                cursor: 'pointer',
+                                flexShrink: 0,
+                                backgroundColor: '#374151',
+                                WebkitTapHighlightColor: 'transparent',
+                            }}
+                        >
+                            <div style={{
+                                width: '24px',
+                                height: '24px',
+                                borderRadius: '50%',
+                                backgroundColor: currentColor,
+                                border: '2px solid white',
+                            }} />
+                        </button>
+
+                        {/* Size Button */}
+                        <button
+                            onClick={() => { setShowSizePicker(!showSizePicker); setShowColorPicker(false); }}
+                            style={{
+                                width: '44px',
+                                height: '44px',
+                                borderRadius: '10px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                border: showSizePicker ? '2px solid #6366f1' : '2px solid #374151',
+                                cursor: 'pointer',
+                                flexShrink: 0,
+                                backgroundColor: '#374151',
+                                WebkitTapHighlightColor: 'transparent',
+                            }}
+                        >
+                            <div style={{
+                                width: Math.min(strokeWidth * 2, 20),
+                                height: Math.min(strokeWidth * 2, 20),
+                                borderRadius: '50%',
+                                backgroundColor: 'white',
+                            }} />
+                        </button>
+
+                        <div style={{ width: '1px', backgroundColor: '#4b5563', flexShrink: 0 }} />
+
+                        {/* Actions */}
+                        <button onClick={onUndo} disabled={!canUndo} style={{
+                            width: '44px', height: '44px', borderRadius: '10px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            border: 'none', cursor: canUndo ? 'pointer' : 'not-allowed',
+                            opacity: canUndo ? 1 : 0.5, backgroundColor: '#374151', flexShrink: 0,
+                            WebkitTapHighlightColor: 'transparent',
+                        }}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M3 7v6h6" /><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+                            </svg>
+                        </button>
+                        <button onClick={onRedo} disabled={!canRedo} style={{
+                            width: '44px', height: '44px', borderRadius: '10px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            border: 'none', cursor: canRedo ? 'pointer' : 'not-allowed',
+                            opacity: canRedo ? 1 : 0.5, backgroundColor: '#374151', flexShrink: 0,
+                            WebkitTapHighlightColor: 'transparent',
+                        }}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 7v6h-6" /><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7" />
+                            </svg>
+                        </button>
+                        <button onClick={onSave} style={{
+                            width: '44px', height: '44px', borderRadius: '10px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            border: 'none', cursor: 'pointer', backgroundColor: '#16a34a', flexShrink: 0,
+                            WebkitTapHighlightColor: 'transparent',
+                        }}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                                <polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
+                            </svg>
+                        </button>
+                        <button onClick={onDownload} style={{
+                            width: '44px', height: '44px', borderRadius: '10px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            border: 'none', cursor: 'pointer', backgroundColor: '#0ea5e9', flexShrink: 0,
+                            WebkitTapHighlightColor: 'transparent',
+                        }} title="Download PNG">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                        </button>
+                        <button onClick={onClear} style={{
+                            width: '44px', height: '44px', borderRadius: '10px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            border: 'none', cursor: 'pointer', backgroundColor: '#dc2626', flexShrink: 0,
+                            WebkitTapHighlightColor: 'transparent',
+                        }}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Color Picker Popup */}
+                {showColorPicker && (
+                    <div style={{
+                        position: 'fixed',
+                        bottom: '80px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        backgroundColor: 'rgba(26, 26, 46, 0.98)',
+                        backdropFilter: 'blur(12px)',
+                        borderRadius: '16px',
+                        padding: '16px',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        zIndex: 50,
+                        boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                    }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                            {PRESET_COLORS.map((color) => (
+                                <button
+                                    key={color}
+                                    onClick={() => { onColorChange(color); setShowColorPicker(false); }}
+                                    style={{
+                                        width: '36px',
+                                        height: '36px',
+                                        borderRadius: '50%',
+                                        backgroundColor: color,
+                                        border: currentColor === color ? '3px solid white' : '2px solid transparent',
+                                        cursor: 'pointer',
+                                        WebkitTapHighlightColor: 'transparent',
+                                    }}
+                                />
+                            ))}
+                        </div>
+                        <input
+                            type="color"
+                            value={currentColor}
+                            onChange={(e) => { onColorChange(e.target.value); setShowColorPicker(false); }}
+                            style={{ width: '100%', height: '36px', borderRadius: '8px', cursor: 'pointer', border: 'none', marginTop: '12px' }}
+                        />
+                    </div>
+                )}
+
+                {/* Size Picker Popup */}
+                {showSizePicker && (
+                    <div style={{
+                        position: 'fixed',
+                        bottom: '80px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        backgroundColor: 'rgba(26, 26, 46, 0.98)',
+                        backdropFilter: 'blur(12px)',
+                        borderRadius: '16px',
+                        padding: '16px',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        zIndex: 50,
+                        boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                    }}>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            {STROKE_WIDTHS.map((width) => (
+                                <button
+                                    key={width}
+                                    onClick={() => { onStrokeWidthChange(width); setShowSizePicker(false); }}
+                                    style={{
+                                        width: '44px',
+                                        height: '44px',
+                                        borderRadius: '10px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        backgroundColor: strokeWidth === width ? '#6366f1' : '#374151',
+                                        WebkitTapHighlightColor: 'transparent',
+                                    }}
+                                >
+                                    <div style={{
+                                        width: Math.min(width * 2, 24),
+                                        height: Math.min(width * 2, 24),
+                                        borderRadius: '50%',
+                                        backgroundColor: 'white',
+                                    }} />
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </>
+        );
+    }
+
+    // Desktop Toolbar (Original)
+    const panelStyle: React.CSSProperties = {
+        width: '80px',
+        height: '100%',
+        backgroundColor: isDarkTheme ? 'rgba(26, 26, 46, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(12px)',
+        borderRight: isDarkTheme ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
+        padding: '16px 8px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '20px',
+        overflowY: 'auto',
+        flexShrink: 0,
+        color: isDarkTheme ? 'white' : '#1a1a2e',
+    };
+
+    const sectionStyle: React.CSSProperties = {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        alignItems: 'center',
+    };
+
+    const labelStyle: React.CSSProperties = {
+        fontSize: '10px',
+        color: isDarkTheme ? '#9ca3af' : '#6b7280',
+        textTransform: 'uppercase',
+        letterSpacing: '0.05em',
+        textAlign: 'center',
+    };
+
+    const toolBtnStyle = (isActive: boolean): React.CSSProperties => ({
+        width: '48px',
+        height: '48px',
+        borderRadius: '12px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '20px',
+        border: 'none',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        backgroundColor: isActive ? '#6366f1' : (isDarkTheme ? '#374151' : '#f3f4f6'),
+        boxShadow: isActive ? '0 4px 15px rgba(99, 102, 241, 0.4)' : 'none',
+        color: isActive ? 'white' : (isDarkTheme ? 'white' : '#374151'),
+    });
+
+    const dividerStyle: React.CSSProperties = {
+        height: '1px',
+        backgroundColor: isDarkTheme ? '#4b5563' : '#e5e7eb',
+        width: '100%',
+    };
+
+    const colorSwatchStyle = (color: string, isActive: boolean): React.CSSProperties => ({
+        width: '24px',
+        height: '24px',
+        borderRadius: '50%',
+        backgroundColor: color,
+        border: isActive ? '2px solid white' : '2px solid transparent',
+        cursor: 'pointer',
+        transform: isActive ? 'scale(1.1)' : 'scale(1)',
+        transition: 'all 0.2s',
+    });
+
+    const actionBtnStyle = (enabled: boolean, bgColor: string): React.CSSProperties => ({
+        width: '48px',
+        height: '40px',
+        borderRadius: '8px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '16px',
+        border: 'none',
+        cursor: enabled ? 'pointer' : 'not-allowed',
+        opacity: enabled ? 1 : 0.5,
+        backgroundColor: bgColor,
+        transition: 'all 0.2s',
+    });
+
+    return (
+        <div style={panelStyle}>
+            {/* Tools */}
+            <div style={sectionStyle}>
+                <span style={labelStyle}>Tools</span>
+                {tools.map((tool) => (
+                    <button
+                        key={tool.id}
+                        onClick={() => onToolChange(tool.id)}
+                        style={toolBtnStyle(currentTool === tool.id)}
+                        title={tool.label}
+                    >
+                        {tool.icon}
+                    </button>
+                ))}
+            </div>
+
+            <div style={dividerStyle} />
+
+            {/* Colors */}
+            <div style={sectionStyle}>
+                <span style={labelStyle}>Colors</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    {PRESET_COLORS.map((color) => (
+                        <button
+                            key={color}
+                            onClick={() => onColorChange(color)}
+                            style={colorSwatchStyle(color, currentColor === color)}
+                            title={color}
+                        />
+                    ))}
+                </div>
+                <input
+                    type="color"
+                    value={currentColor}
+                    onChange={(e) => onColorChange(e.target.value)}
+                    style={{ width: '40px', height: '32px', borderRadius: '4px', cursor: 'pointer', border: 'none', marginTop: '4px' }}
+                />
+            </div>
+
+            <div style={dividerStyle} />
+
+            {/* Stroke Width */}
+            <div style={sectionStyle}>
+                <span style={labelStyle}>Size</span>
+                {STROKE_WIDTHS.map((width) => (
+                    <button
+                        key={width}
+                        onClick={() => onStrokeWidthChange(width)}
+                        style={{
+                            width: '40px',
+                            height: '24px',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: 'none',
+                            cursor: 'pointer',
+                            backgroundColor: strokeWidth === width ? '#6366f1' : '#374151',
+                        }}
+                    >
+                        <div
+                            style={{
+                                width: Math.min(width, 16),
+                                height: Math.min(width, 16),
+                                borderRadius: '50%',
+                                backgroundColor: 'white',
+                            }}
+                        />
+                    </button>
+                ))}
+            </div>
+
+            <div style={dividerStyle} />
+
+            {/* Actions */}
+            <div style={{ ...sectionStyle, marginTop: 'auto' }}>
+                <button onClick={onUndo} disabled={!canUndo} style={actionBtnStyle(canUndo, '#374151')} title="Undo (Ctrl+Z)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'white' }}>
+                        <path d="M3 7v6h6" />
+                        <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+                    </svg>
+                </button>
+                <button onClick={onRedo} disabled={!canRedo} style={actionBtnStyle(canRedo, '#374151')} title="Redo (Ctrl+Y)">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'white' }}>
+                        <path d="M21 7v6h-6" />
+                        <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7" />
+                    </svg>
+                </button>
+                <button onClick={onSave} style={actionBtnStyle(true, '#16a34a')} title="Save Canvas">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'white' }}>
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                        <polyline points="17 21 17 13 7 13 7 21" />
+                        <polyline points="7 3 7 8 15 8" />
+                    </svg>
+                </button>
+                <button onClick={onDownload} style={actionBtnStyle(true, '#0ea5e9')} title="Download PNG">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'white' }}>
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                </button>
+                <button onClick={onClear} style={actionBtnStyle(true, '#dc2626')} title="Clear Canvas">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'white' }}>
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                </button>
+
+                <div style={{ width: '100%', height: '1px', backgroundColor: 'rgba(156, 163, 175, 0.2)', margin: '4px 0' }} />
+
+                {/* Theme Toggle */}
+                <button
+                    onClick={onToggleTheme}
+                    title={isDarkTheme ? "Switch to light mode" : "Switch to dark mode"}
+                    style={{
+                        width: '100%',
+                        padding: '12px',
+                        backgroundColor: isDarkTheme ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                        border: '1px solid rgba(156, 163, 175, 0.2)',
+                        borderRadius: '12px',
+                        color: isDarkTheme ? '#e5e7eb' : '#374151',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '20px',
+                        transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = isDarkTheme ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = isDarkTheme ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+                    }}
+                >
+                    {isDarkTheme ? '☀️' : '🌙'}
+                </button>
+            </div>
+        </div>
+    );
+};
