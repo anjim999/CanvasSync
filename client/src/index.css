@@ -1,0 +1,220 @@
+@import "tailwindcss";
+
+/* Dark theme base */
+:root {
+  --bg-primary: #0f0f1a;
+  --bg-secondary: #1a1a2e;
+  --bg-tertiary: #252542;
+  --accent: #6366f1;
+  --accent-hover: #818cf8;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  color: var(--text-primary);
+  min-height: 100vh;
+  min-height: 100dvh;
+  /* Dynamic viewport height for mobile */
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+#root {
+  width: 100vw;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Mobile scrolling support */
+@media (max-width: 768px) {
+  body {
+    overflow-y: auto;
+  }
+
+  #root {
+    height: auto;
+    min-height: 100dvh;
+  }
+}
+
+/* Canvas styles */
+.canvas-container {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.drawing-canvas {
+  cursor: crosshair;
+  touch-action: none;
+}
+
+/* Glassmorphism panels */
+.glass-panel {
+  background: rgba(26, 26, 46, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+}
+
+/* Tool button styles */
+.tool-btn {
+  transition: all 0.2s ease;
+}
+
+.tool-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+
+.tool-btn.active {
+  background: var(--accent);
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.5);
+}
+
+/* Color swatch */
+.color-swatch {
+  transition: transform 0.2s ease;
+}
+
+.color-swatch:hover {
+  transform: scale(1.15);
+}
+
+.color-swatch.active {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+
+/* User cursor */
+.user-cursor {
+  position: absolute;
+  pointer-events: none;
+  z-index: 100;
+  transition: transform 0.05s ease-out;
+}
+
+/* Animations */
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s infinite;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* FPS Counter */
+.fps-counter {
+  font-family: 'Monaco', 'Consolas', monospace;
+  font-size: 12px;
+}
+
+/* Mobile-specific styles */
+@media (max-width: 768px) {
+
+  /* Hide scrollbars on mobile toolbar */
+  .mobile-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Prevent text selection during drawing */
+  .drawing-active {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Safe area padding for notched devices */
+  .safe-area-bottom {
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+
+  .safe-area-top {
+    padding-top: max(8px, env(safe-area-inset-top));
+  }
+}
+
+/* Prevent pull-to-refresh on touch devices */
+html {
+  overscroll-behavior: none;
+}
+
+/* Disable highlight on tap for touch devices */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Ensure inputs don't zoom on iOS */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+/* Smooth transitions for interactive elements */
+button,
+a {
+  transition: transform 0.1s ease, opacity 0.2s ease;
+}
+
+button:active {
+  transform: scale(0.97);
+}
