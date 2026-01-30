@@ -12,8 +12,8 @@
 
 ## 🌐 Live Demo
 
-**Frontend (Vercel):** [https://canvas-sync.vercel.app](https://canvas-sync-eight.vercel.app)  
-**Backend (Render):** [https://canvas-sync-api.onrender.com](https://canvas-sync-f60h.onrender.com)
+**Frontend (Vercel):** [https://canvassync-sandy.vercel.app](https://canvassync-sandy.vercel.app/)  
+**Backend (Render):** [https://canvassync.onrender.com](https://canvassync.onrender.com)
 
 > ⚠️ **Note:** The backend on Render may take 30-60 seconds to wake up if it has been idle.
 
