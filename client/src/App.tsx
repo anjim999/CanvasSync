@@ -5,7 +5,9 @@ import { Canvas } from './components/Canvas';
 import { Toolbar } from './components/Toolbar';
 import { UserPanel } from './components/UserPanel';
 import { JoinModal } from './components/JoinModal';
+import { ChatPanel, ChatToggle } from './components/chat';
 import { useSocket } from './hooks/useSocket';
+import { useChat } from './hooks/useChat';
 import type { DrawAction, Tool, Point } from './types';
 import './App.css';
 
@@ -92,6 +94,7 @@ function App() {
     createRoom,
     saveCanvas,
     getUserId,
+    getSocket,
     onDrawAction,
     onCursorUpdate,
     onCanvasState,
@@ -101,6 +104,24 @@ function App() {
   } = useSocket();
 
   const userId = getUserId();
+  const currentUser = users.find(u => u.id === userId);
+  const userColor = currentUser?.color || '#6366f1';
+  const username = currentUser?.username || 'Anonymous';
+
+  // Chat hook
+  const {
+    messages: chatMessages,
+    isOpen: isChatOpen,
+    unreadCount: chatUnreadCount,
+    sendMessage: sendChatMessage,
+    toggleChat,
+    setIsOpen: setChatOpen,
+  } = useChat({
+    socket: getSocket(),
+    roomId: currentRoom,
+    userId,
+    username,
+  });
 
   // Update undo/redo availability - GLOBAL undo now (any non-undone action can be undone)
   useEffect(() => {
@@ -574,6 +595,25 @@ function App() {
           confirmText="Clear Canvas"
           isDestructive={true}
           theme={theme}
+        />
+
+        {/* Chat Toggle Button */}
+        <ChatToggle
+          onClick={toggleChat}
+          unreadCount={chatUnreadCount}
+          isOpen={isChatOpen}
+          isDarkTheme={isDarkTheme}
+        />
+
+        {/* Chat Panel */}
+        <ChatPanel
+          messages={chatMessages}
+          onSendMessage={(text) => sendChatMessage(text, userColor)}
+          isOpen={isChatOpen}
+          onClose={() => setChatOpen(false)}
+          currentUserId={userId}
+          userColor={userColor}
+          isDarkTheme={isDarkTheme}
         />
       </div>
 

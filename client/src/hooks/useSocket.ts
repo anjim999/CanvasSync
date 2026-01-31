@@ -208,6 +208,9 @@ export function useSocket() {
         return socket?.id || null;
     }, []);
 
+    // Get raw socket for other hooks (like useChat)
+    const getSocket = useCallback(() => socket, []);
+
     return {
         isConnected,
         users,
@@ -225,6 +228,7 @@ export function useSocket() {
         saveCanvas,
         loadCanvas,
         getUserId,
+        getSocket,
         // Event handlers (set by components)
         onDrawAction,
         onCursorUpdate,

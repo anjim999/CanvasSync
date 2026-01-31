@@ -32,6 +32,17 @@ export interface User {
     isDrawing?: boolean;
 }
 
+// Chat message
+export interface ChatMessage {
+    id: string;
+    userId: string;
+    username: string;
+    text: string;
+    timestamp: number;
+    color: string;
+    isSystem?: boolean;
+}
+
 // Room info
 export interface Room {
     id: string;
@@ -60,6 +71,7 @@ export interface ClientToServerEvents {
     create_room: (name: string) => void;
     save_canvas: () => void;
     load_canvas: (roomId: string) => void;
+    send_chat: (data: { roomId: string; message: ChatMessage }) => void;
 }
 
 // WebSocket Events - Server to Client
@@ -78,6 +90,8 @@ export interface ServerToClientEvents {
     error: (message: string) => void;
     canvas_saved: (roomId: string) => void;
     canvas_loaded: (state: CanvasState) => void;
+    chat_message: (message: ChatMessage) => void;
+    chat_history: (messages: ChatMessage[]) => void;
 }
 
 // User cursor colors (assigned automatically)

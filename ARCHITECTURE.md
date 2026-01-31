@@ -2,13 +2,14 @@
 
 ## 🏗️ System Overview
 
-CanvasSync is a **real-time collaborative drawing application** built with a client-server architecture. The system uses **WebSockets (Socket.IO)** for bidirectional communication, enabling multiple users to draw simultaneously on a shared canvas.
+CanvasSync is a **real-time collaborative drawing application** built with a client-server architecture. The system uses **WebSockets (Socket.IO)** for bidirectional communication, enabling multiple users to draw simultaneously on a shared canvas with live cursors, team chat, and global undo/redo.
 
 ### Design Philosophy
-1. **Server as Single Source of Truth** - All canvas state lives on the server
+1. **Server as Single Source of Truth** - All canvas and chat state lives on the server
 2. **Optimistic Updates** - Client draws immediately, then syncs with server
 3. **Global Operations** - Undo/Redo affects all users, not just the requester
 4. **Event-Driven Architecture** - All changes propagate via WebSocket events
+5. **Modular Design** - Separation of concerns (hooks, components, services)
 
 ---
 
@@ -24,6 +25,9 @@ CanvasSync is a **real-time collaborative drawing application** built with a cli
 │  │ ┌─────────┐ │  │ ┌─────────┐ │  │ ┌─────────┐ │             │
 │  │ │ Canvas  │ │  │ │ Canvas  │ │  │ │ Canvas  │ │             │
 │  │ │ (HTML5) │ │  │ │ (HTML5) │ │  │ │ (HTML5) │ │             │
+│  │ └─────────┘ │  │ └─────────┘ │  │ └─────────┘ │             │
+│  │ ┌─────────┐ │  │ ┌─────────┐ │  │ ┌─────────┐ │             │
+│  │ │  Chat   │ │  │ │  Chat   │ │  │ │  Chat   │ │             │
 │  │ └─────────┘ │  │ └─────────┘ │  │ └─────────┘ │             │
 │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘             │
 │         │                │                │                     │
@@ -47,6 +51,7 @@ CanvasSync is a **real-time collaborative drawing application** built with a cli
 │  │                  State Manager                               │ │
 │  │  - Room management                                           │ │
 │  │  - Drawing actions array                                     │ │
+│  │  - Chat history (last 100 messages/room)                     │ │
 │  │  - Global undo/redo stacks                                   │ │
 │  │  - User presence tracking                                    │ │
 │  └─────────────────────────────────────────────────────────────┘ │
@@ -54,30 +59,155 @@ CanvasSync is a **real-time collaborative drawing application** built with a cli
 │                           ▼                                      │
 │  ┌─────────────────────────────────────────────────────────────┐ │
 │  │                  Persistence Layer                           │ │
-│  │  - JSON file storage                                         │ │
-│  │  - Save/Load canvas state                                    │ │
+│  │  - JSON file storage for canvas                              │ │
+│  │  - In-memory chat (per session)                              │ │
 │  └─────────────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
+## 📁 Project Structure
+
+```
+canvas-sync/
+├── client/                          # React frontend
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── Canvas.tsx           # Main drawing canvas (touch support)
+│   │   │   ├── Toolbar.tsx          # Drawing tools (Lucide icons)
+│   │   │   ├── UserPanel.tsx        # Users & rooms sidebar
+│   │   │   ├── JoinModal.tsx        # Room join screen
+│   │   │   ├── ConfirmationModal.tsx # Clear confirmation
+│   │   │   └── chat/                # Chat feature module
+│   │   │       ├── ChatPanel.tsx    # Chat messages UI
+│   │   │       ├── ChatToggle.tsx   # FAB with unread badge
+│   │   │       └── index.ts         # Clean exports
+│   │   ├── hooks/
+│   │   │   ├── useSocket.ts         # Socket.IO connection
+│   │   │   ├── useDraw.ts           # Drawing logic (shapes, fill)
+│   │   │   └── useChat.ts           # Chat message handling
+│   │   ├── config/
+│   │   │   └── env.ts               # Environment config
+│   │   ├── types/
+│   │   │   └── index.ts             # TypeScript interfaces
+│   │   ├── App.tsx                  # Main app component
+│   │   └── App.css                  # Global styles
+│   └── package.json
+│
+├── server/                          # Node.js backend
+│   ├── src/
+│   │   ├── server.ts                # Express + Socket.IO setup
+│   │   ├── socket-handlers.ts       # WebSocket event handlers
+│   │   ├── state-manager.ts         # State management + chat
+│   │   └── types.ts                 # Shared TypeScript types
+│   ├── data/                        # Saved canvas JSON files
+│   └── package.json
+│
+├── ARCHITECTURE.md                  # This file
+└── README.md                        # Project documentation
+```
+
+---
+
+## 🔧 Core Data Types
+
+### DrawAction (Drawing Elements)
+
+```typescript
+interface DrawAction {
+    id: string;                    // Unique ID: `${odId}_${timestamp}_${rand}`
+    odId: string;                  // Socket ID of drawing user
+    type: 'stroke' | 'shape' | 'text';
+    tool: Tool;                    // brush, eraser, line, arrow, rectangle, circle, triangle, diamond, text
+    points: Point[];               // For strokes: path, for shapes: [start, end]
+    color: string;                 // Hex color code
+    strokeWidth: number;           // Pixel width
+    isFilled?: boolean;            // For shapes: filled or outline only
+    timestamp: number;             // Unix timestamp
+    isUndone?: boolean;            // Soft-delete for undo
+    text?: string;                 // For text tool
+}
+
+type Tool = 
+  | 'brush' 
+  | 'eraser' 
+  | 'line' 
+  | 'arrow' 
+  | 'rectangle' 
+  | 'circle' 
+  | 'triangle' 
+  | 'diamond' 
+  | 'text';
+```
+
+### ChatMessage (Team Chat)
+
+```typescript
+interface ChatMessage {
+    id: string;          // Unique message ID
+    userId: string;      // Socket ID of sender
+    username: string;    // Display name
+    text: string;        // Message content
+    timestamp: number;   // Unix timestamp
+    color: string;       // User's assigned color
+    isSystem?: boolean;  // System message (join/leave)
+}
+```
+
+### User & Room
+
+```typescript
+interface User {
+    id: string;              // Socket ID
+    username: string;        
+    color: string;           // Assigned color (from palette)
+    cursor?: Point;          // Current cursor position
+    isDrawing?: boolean;     // Currently drawing?
+}
+
+interface Room {
+    id: string;
+    name: string;
+    userCount: number;
+    createdAt: number;
+}
+```
+
+### RoomState (Server-side)
+
+```typescript
+interface RoomState {
+    id: string;
+    name: string;
+    actions: DrawAction[];                    // All drawing history
+    undoneActions: Map<string, DrawAction[]>; // Redo stacks
+    users: Map<string, User>;                 // Connected users
+    chatHistory: ChatMessage[];               // Last 100 messages
+    createdAt: number;
+}
+```
+
+---
+
 ## 🔄 Data Flow Diagrams
 
-### 1. Drawing a Stroke (Real-time Sync)
+### 1. Drawing a Shape (with Fill)
 
 ```
 User A                    Server                     User B
   │                         │                          │
   │ mousedown               │                          │
-  ├──────────────────────►  │                          │
-  │ Start local drawing     │                          │
+  │ Set start point         │                          │
   │                         │                          │
-  │ mousemove (continuous)  │                          │
-  ├──────────────────────►  │                          │
-  │ Draw locally (immediate)│                          │
+  │ mousemove               │                          │
+  │ Show preview locally    │                          │
   │                         │                          │
   │ mouseup                 │                          │
+  │ Create DrawAction:      │                          │
+  │ { tool: 'rectangle',    │                          │
+  │   isFilled: true,       │                          │
+  │   points: [start, end] }│                          │
   │ emit('draw_action')     │                          │
   ├─────────────────────────►                          │
   │                         │ addDrawAction()          │
@@ -86,69 +216,30 @@ User A                    Server                     User B
   │                         │ broadcast('draw_action') │
   │                         ├─────────────────────────►│
   │                         │                          │ Draw on canvas
-  │                         │                          │
+  │                         │                          │ (filled rectangle)
 ```
 
-**Key Points:**
-- Client draws **immediately** on mousedown/mousemove for zero latency feel
-- Complete action is sent **only on mouseup** (not every point)
-- Server stores the action and broadcasts to **other users only**
-- Original user already has the drawing (no echo needed)
-
----
-
-### 2. Global Undo Operation
+### 2. Chat Message Flow
 
 ```
-User A                    Server                     User B
+User A                    Server                     All Users in Room
   │                         │                          │
-  │ Ctrl+Z pressed          │                          │
-  │ emit('undo')            │                          │
+  │ Type message            │                          │
+  │ Click send              │                          │
+  │ emit('send_chat')       │                          │
   ├─────────────────────────►                          │
-  │                         │ undoAction()             │
-  │                         │ Find LAST action         │
-  │                         │ (from ANY user)          │
-  │                         │ Mark as isUndone=true    │
+  │                         │ addChatMessage()         │
+  │                         │ Store in chatHistory[]   │
+  │                         │ (keep last 100)          │
   │                         │                          │
-  │                         │ emit('undo_applied')     │
+  │                         │ emit('chat_message')     │
   │◄────────────────────────┤                          │
   │                         ├─────────────────────────►│
-  │ Update local state      │                          │ Update local state
-  │ Redraw canvas           │                          │ Redraw canvas
-  │                         │                          │
+  │ Add to local messages   │                          │ Add to local messages
+  │ Scroll to bottom        │                          │ Show unread badge
 ```
 
-**Global Undo Logic (Critical Feature):**
-```typescript
-// Server-side: state-manager.ts
-export function undoAction(roomId: string, _requestingUserId: string): DrawAction | null {
-    const room = rooms.get(roomId);
-    if (!room) return null;
-
-    // Find the LAST action that isn't already undone (from ANY user)
-    for (let i = room.actions.length - 1; i >= 0; i--) {
-        const action = room.actions[i];
-        if (!action.isUndone) {
-            action.isUndone = true;
-            
-            // Add to global redo stack
-            let globalUndone = room.undoneActions.get('global');
-            if (!globalUndone) {
-                globalUndone = [];
-                room.undoneActions.set('global', globalUndone);
-            }
-            globalUndone.push(action);
-            
-            return action;
-        }
-    }
-    return null;
-}
-```
-
----
-
-### 3. New User Joining
+### 3. New User Joining (Canvas + Chat)
 
 ```
 New User                  Server                     Existing Users
@@ -166,28 +257,33 @@ New User                  Server                     Existing Users
   │◄────────────────────────┤                          │
   │ {actions: [...]}        │                          │
   │                         │                          │
-  │ Redraw all actions      │                          │
-  │ on local canvas         │                          │
+  │ emit('chat_history')    │                          │
+  │◄────────────────────────┤                          │
+  │ [last 100 messages]     │                          │
+  │                         │                          │
+  │ Redraw canvas           │                          │
+  │ Load chat history       │                          │
 ```
 
 ---
 
-## 🔌 WebSocket Protocol Specification
+## 🔌 WebSocket Protocol
 
 ### Client → Server Events
 
 | Event | Payload | Description |
 |-------|---------|-------------|
-| `join_room` | `{ roomId: string, username: string }` | Join a collaborative room |
+| `join_room` | `{ roomId: string, username: string }` | Join room |
 | `leave_room` | `void` | Leave current room |
-| `draw_action` | `DrawAction` | Send completed drawing action |
-| `cursor_move` | `{ x: number, y: number }` | Update cursor position |
+| `draw_action` | `DrawAction` | Send drawing action |
+| `cursor_move` | `Point` | Update cursor position |
 | `undo` | `void` | Request global undo |
 | `redo` | `void` | Request global redo |
 | `clear_canvas` | `void` | Clear all drawings |
 | `save_canvas` | `void` | Persist to disk |
-| `create_room` | `string` | Create new room with name |
+| `create_room` | `string` | Create new room |
 | `get_rooms` | `void` | Request room list |
+| `send_chat` | `{ roomId: string, message: ChatMessage }` | Send chat message |
 
 ### Server → Client Events
 
@@ -198,210 +294,64 @@ New User                  Server                     Existing Users
 | `cursor_update` | `{ odId: string, position: Point }` | Peer cursor moved |
 | `undo_applied` | `{ odId: string, actionId: string }` | Action was undone |
 | `redo_applied` | `{ odId: string, actionId: string }` | Action was redone |
-| `canvas_cleared` | `string` | Canvas was cleared (userId) |
+| `canvas_cleared` | `string` | Canvas was cleared |
 | `user_joined` | `User` | New user joined |
-| `user_left` | `string` | User disconnected (userId) |
+| `user_left` | `string` | User disconnected |
 | `users_update` | `User[]` | Updated user list |
 | `rooms_list` | `Room[]` | Available rooms |
 | `room_created` | `Room` | New room created |
-
-### Data Types
-
-```typescript
-interface DrawAction {
-    id: string;              // Unique ID: `${odId}_${timestamp}_${rand}`
-    odId: string;            // Socket ID of drawing user
-    type: 'stroke' | 'shape' | 'text';
-    tool: 'brush' | 'eraser' | 'line' | 'rectangle' | 'circle' | 'text';
-    points: Point[];         // Array of {x, y} coordinates
-    color: string;           // Hex color code
-    strokeWidth: number;     // Pixel width
-    timestamp: number;       // Unix timestamp
-    isUndone?: boolean;      // Soft-delete flag
-    text?: string;           // For text tool
-}
-
-interface User {
-    id: string;              // Socket ID
-    username: string;        
-    color: string;           // Assigned color (from palette)
-    cursor?: Point;          // Current cursor position
-    isDrawing?: boolean;     // Currently drawing?
-}
-
-interface CanvasState {
-    actions: DrawAction[];   // All visible actions (not undone)
-    users: User[];           // Current room members
-    roomId: string;          
-}
-```
+| `chat_message` | `ChatMessage` | New chat message |
+| `chat_history` | `ChatMessage[]` | Chat history on join |
 
 ---
 
-## ⚔️ Conflict Resolution Strategy
+## 🎨 Drawing System Architecture
 
-### Problem: Multiple Users Drawing Simultaneously
+### Shape Rendering (useDraw.ts)
 
-When User A and User B draw at the same time in overlapping areas, we need a consistent conflict resolution strategy.
-
-### Solution: Last-Write-Wins with Immediate Local Feedback
-
-```
-Timeline:
-0ms   - User A starts drawing
-50ms  - User B starts drawing (overlapping area)
-100ms - User A continues drawing (local render)
-100ms - User B continues drawing (local render)
-200ms - User A finishes, sends action to server
-250ms - User B finishes, sends action to server
-300ms - Server receives A's action, broadcasts
-350ms - Server receives B's action, broadcasts
-400ms - Both clients have: [A's action, B's action]
-```
-
-**Why This Works:**
-1. **No Conflict on Drawing** - Both strokes are stored separately
-2. **Visual Overlap** - Later strokes render on top (natural canvas behavior)
-3. **Deterministic Order** - Server receives actions in order, broadcasts in same order
-4. **Consistent State** - All clients end up with identical action arrays
-
-### Conflict Scenarios
-
-| Scenario | Resolution |
-|----------|------------|
-| **Simultaneous drawing** | Both strokes kept, last one renders on top |
-| **Undo during drawing** | Undo only affects completed actions |
-| **Clear during drawing** | Current drawing lost, canvas cleared |
-| **Disconnect during drawing** | Incomplete stroke not sent/saved |
-
-### Undo/Redo Conflict Handling
+The drawing system supports multiple tools with optional fill:
 
 ```typescript
-// When new action is added, clear ALL redo stacks
-export function addDrawAction(roomId: string, action: DrawAction): boolean {
-    const room = rooms.get(roomId);
-    if (!room) return false;
+// Shape tools with fill support
+const shapesWithFill = ['rectangle', 'circle', 'triangle', 'diamond'];
 
-    room.actions.push(action);
+function drawShape(ctx: CanvasRenderingContext2D, action: DrawAction) {
+    const [start, end] = action.points;
     
-    // Clear redo - new content invalidates redo history
-    room.undoneActions.forEach((stack) => (stack.length = 0));
+    ctx.strokeStyle = action.color;
+    ctx.fillStyle = action.color;
+    ctx.lineWidth = action.strokeWidth;
     
-    return true;
-}
-```
-
-This prevents "redo" from restoring outdated state after new content is added.
-
----
-
-## ⚡ Performance Optimizations
-
-### 1. Event Batching (Drawing Points)
-
-**Problem:** Mouse/touch events fire at 60+ Hz, sending each point is too chatty.
-
-**Solution:** Accumulate points locally, send complete stroke on mouseup.
-
-```typescript
-// useDraw.ts - Points accumulated during drawing
-const draw = useCallback((event, canvas, ctx) => {
-    // Draw immediately for zero-latency feel
-    drawLine(ctx, lastPoint.current, currentPoint, currentAction.current);
-    
-    // Accumulate points (not sent yet)
-    currentAction.current.points.push(currentPoint);
-}, [isDrawing]);
-
-// Only emit complete action on mouseup
-const stopDrawing = useCallback(() => {
-    if (currentAction.current.points.length > 1) {
-        onDraw(currentAction.current);  // Single emit with all points
+    switch (action.tool) {
+        case 'rectangle':
+            if (action.isFilled) {
+                ctx.fillRect(start.x, start.y, end.x - start.x, end.y - start.y);
+            }
+            ctx.strokeRect(start.x, start.y, end.x - start.x, end.y - start.y);
+            break;
+            
+        case 'triangle':
+            drawTriangle(ctx, start, end, action.isFilled);
+            break;
+            
+        case 'diamond':
+            drawDiamond(ctx, start, end, action.isFilled);
+            break;
+            
+        case 'arrow':
+            drawArrowWithHead(ctx, start, end);
+            break;
     }
-}, [onDraw]);
+}
 ```
 
-**Result:** 1 WebSocket message per stroke instead of 60+ per second.
+### Hook Separation
 
----
-
-### 2. Efficient Canvas Redrawing
-
-**Problem:** Redrawing 1000s of strokes on every change is slow.
-
-**Solution:** Only full-redraw on undo/redo/clear. New strokes draw incrementally.
-
-```typescript
-// Drawing new stroke - INCREMENTAL (fast)
-const handlePointerMove = (e: React.MouseEvent) => {
-    drawLine(ctx, lastPoint, currentPoint, action);  // Just add to canvas
-};
-
-// Undo applied - FULL REDRAW (necessary)
-const redrawCanvas = (ctx, actions, width, height) => {
-    ctx.fillStyle = '#0f0f1a';
-    ctx.fillRect(0, 0, width, height);  // Clear
-    actions.filter(a => !a.isUndone).forEach(action => drawAction(ctx, action));
-};
-```
-
----
-
-### 3. Cursor Throttling
-
-**Problem:** Cursor updates at 60Hz create network congestion.
-
-**Solution:** Socket.IO handles this automatically with batching, but we also only send on actual movement.
-
-```typescript
-// Only send if position changed meaningfully
-const handleCursorMove = (position: Point) => {
-    sendCursorMove(position);  // Debounced by Socket.IO
-};
-```
-
----
-
-### 4. Normalized Coordinates
-
-**Problem:** Different screen sizes have different canvas dimensions.
-
-**Solution:** Store coordinates in canvas space (1920x1080), scale on render.
-
-```typescript
-const getCanvasCoordinates = (event, canvas) => {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = canvas.width / rect.width;   // e.g., 1920 / 800 = 2.4
-    const scaleY = canvas.height / rect.height; // e.g., 1080 / 600 = 1.8
-    
-    return {
-        x: (clientX - rect.left) * scaleX,  // Normalized to 1920x1080
-        y: (clientY - rect.top) * scaleY,
-    };
-};
-```
-
----
-
-### 5. Memory Management
-
-**Problem:** Long sessions accumulate many actions in memory.
-
-**Solution:** 
-- Actions stored once on server
-- Clients receive same reference via Socket.IO
-- Clear canvas periodically for long sessions
-
----
-
-## 🔒 Security Considerations
-
-| Aspect | Implementation |
-|--------|----------------|
-| **Input Validation** | Server validates action structure before storing |
-| **Rate Limiting** | Socket.IO handles connection limits |
-| **Room Isolation** | Actions only broadcast within same room |
-| **No Auth** | Intentional for assignment - production would use JWT |
+| Hook | Responsibility |
+|------|----------------|
+| `useSocket` | WebSocket connection, room management, event routing |
+| `useDraw` | Canvas drawing logic, shape rendering, coordinates |
+| `useChat` | Chat messages, unread count, send/receive |
 
 ---
 
@@ -412,13 +362,15 @@ const getCanvasCoordinates = (event, canvas) => {
 ```typescript
 // state-manager.ts
 const rooms = new Map<string, RoomState>();
+const MAX_CHAT_HISTORY = 100;
 
 interface RoomState {
     id: string;
     name: string;
-    actions: DrawAction[];                    // All drawing history
-    undoneActions: Map<string, DrawAction[]>; // Redo stacks
-    users: Map<string, User>;                 // Connected users
+    actions: DrawAction[];
+    undoneActions: Map<string, DrawAction[]>;
+    users: Map<string, User>;
+    chatHistory: ChatMessage[];      // NEW: Chat messages
     createdAt: number;
 }
 ```
@@ -426,70 +378,95 @@ interface RoomState {
 ### Client State (React)
 
 ```typescript
-// App.tsx
-const [actions, setActions] = useState<DrawAction[]>([]);  // Synced from server
-const [remoteCursors, setRemoteCursors] = useState(new Map());
-const [users, setUsers] = useState<User[]>([]);
+// App.tsx - Main state
+const [actions, setActions] = useState<DrawAction[]>([]);      // Canvas
+const [remoteCursors, setRemoteCursors] = useState(new Map()); // Cursors
+const [users, setUsers] = useState<User[]>([]);                // Users
+const [isFilled, setIsFilled] = useState(false);               // Fill toggle
+
+// useChat hook - Chat state
+const [messages, setMessages] = useState<ChatMessage[]>([]);
+const [isOpen, setIsOpen] = useState(false);
+const [unreadCount, setUnreadCount] = useState(0);
 ```
 
 ---
 
-## 🧪 Testing Considerations
+## ⚡ Performance Optimizations
 
-### Unit Tests (Recommended)
-- `state-manager.ts`: Test undo/redo logic
-- `useDraw.ts`: Test coordinate calculations
-- Socket handlers: Test event routing
+### 1. Cursor Throttling
+```typescript
+// Throttle cursor updates to 50ms (20fps)
+const lastCursorUpdateRef = useRef<number>(0);
+const sendCursorMove = useCallback((position: Point) => {
+    const now = Date.now();
+    if (now - lastCursorUpdateRef.current > 50) {
+        socket.emit('cursor_move', position);
+        lastCursorUpdateRef.current = now;
+    }
+}, []);
+```
 
-### Integration Tests
-- Multi-client simulation
-- Disconnect/reconnect scenarios
-- Concurrent drawing
+### 2. Chat History Limit
+```typescript
+// Keep only last 100 messages per room
+if (room.chatHistory.length > MAX_CHAT_HISTORY) {
+    room.chatHistory = room.chatHistory.slice(-MAX_CHAT_HISTORY);
+}
+```
 
-### Manual Testing Checklist
-- [ ] Draw appears on other browser instantly
-- [ ] Undo removes last action for all users
-- [ ] Redo restores correctly
-- [ ] User list updates on join/leave
-- [ ] Cursors visible and smooth
-- [ ] Mobile touch works
-- [ ] Refresh restores canvas state
+### 3. Canvas Redraw Optimization
+- Only redraw on action array change
+- Filter out `isUndone` actions before render
+- Use `requestAnimationFrame` for smooth rendering
 
 ---
 
-## 🚀 Scaling Considerations (1000+ Users)
+## 🔐 Security Considerations
 
-If scaling to many concurrent users, consider:
+| Aspect | Implementation |
+|--------|----------------|
+| **Input Validation** | Server validates action/message structure |
+| **Rate Limiting** | Socket.IO connection limits |
+| **Room Isolation** | Actions/chat only broadcast within room |
+| **XSS Prevention** | No HTML in chat messages (text only) |
+| **No Auth** | Intentional for demo - production would use JWT |
 
-1. **Redis Pub/Sub** - For multi-server Socket.IO
-2. **Action Compression** - Reduce payload size
+---
+
+## 🚀 Scaling Considerations
+
+For 1000+ concurrent users:
+
+1. **Redis Adapter** - For multi-server Socket.IO
+2. **Action Compression** - Reduce payload size with gzip
 3. **Canvas Tiling** - Split large canvas into chunks
 4. **WebRTC Data Channels** - P2P for cursor updates
-5. **Canvas Layers** - Separate scratch/committed layers
+5. **Database for Chat** - PostgreSQL/MongoDB instead of memory
+6. **CDN for Static Assets** - Offload client bundle
 
 ---
 
-## 📁 File Structure Reference
+## 🧪 Testing Checklist
 
-```
-server/src/
-├── server.ts           # Express + Socket.IO bootstrap
-├── socket-handlers.ts  # Event handlers (join, draw, undo, etc.)
-├── state-manager.ts    # Core state logic (rooms, actions, undo)
-└── types.ts            # Shared TypeScript interfaces
+### Core Features
+- [ ] Draw appears on other browser instantly
+- [ ] Undo removes last action for ALL users
+- [ ] Redo restores correctly
+- [ ] Fill toggle works for shapes
+- [ ] Arrow/Triangle/Diamond render correctly
 
-client/src/
-├── components/
-│   ├── Canvas.tsx      # HTML5 Canvas wrapper
-│   ├── Toolbar.tsx     # Tool selection UI
-│   ├── UserPanel.tsx   # User list + room UI
-│   └── JoinModal.tsx   # Entry screen
-├── hooks/
-│   ├── useSocket.ts    # Socket.IO connection
-│   └── useDraw.ts      # Drawing logic (raw Canvas API)
-├── types/index.ts      # Client-side types
-└── App.tsx             # Root component
-```
+### Chat Features
+- [ ] Messages appear instantly for all users
+- [ ] Chat history loads on join
+- [ ] Unread badge shows when chat closed
+- [ ] Messages persist across refresh (within session)
+
+### Edge Cases
+- [ ] User disconnects during drawing
+- [ ] Rapid undo/redo spam
+- [ ] Very long chat messages
+- [ ] Mobile touch drawing
 
 ---
 

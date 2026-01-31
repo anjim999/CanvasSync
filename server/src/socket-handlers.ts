@@ -15,6 +15,8 @@ import {
     createRoom,
     saveCanvas,
     loadCanvas,
+    addChatMessage,
+    getChatHistory,
 } from './state-manager.js';
 
 type SocketIO = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -46,6 +48,10 @@ export function setupSocketHandlers(io: SocketIO): void {
             if (state) {
                 socket.emit('canvas_state', state);
             }
+
+            // Send chat history to new user
+            const chatHistory = getChatHistory(roomId);
+            socket.emit('chat_history', chatHistory);
 
             // Update all users in room with user list
             io.to(roomId).emit('users_update', getUsers(roomId));
@@ -162,6 +168,16 @@ export function setupSocketHandlers(io: SocketIO): void {
                 io.to(roomId).emit('canvas_state', state);
             } else {
                 socket.emit('error', 'Failed to load canvas');
+            }
+        });
+
+        // Send chat message
+        socket.on('send_chat', ({ roomId, message }) => {
+            if (!roomId || !message) return;
+
+            if (addChatMessage(roomId, message)) {
+                // Broadcast to all in room (including sender)
+                io.to(roomId).emit('chat_message', message);
             }
         });
 

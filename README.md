@@ -1,6 +1,6 @@
 # 🎨 CanvasSync
 
-> **Real-time collaborative drawing application** where multiple users can draw together on a shared canvas with live cursor tracking, global undo/redo support, and room-based collaboration.
+> **Real-time collaborative drawing application** where multiple users can draw together on a shared canvas with live cursor tracking, global undo/redo, team chat, and room-based collaboration.
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
@@ -22,14 +22,21 @@
 ## ✨ Features
 
 ### Core Drawing Tools
-| Tool | Description |
-|------|-------------|
-| 🖌️ **Brush** | Freehand drawing with customizable colors and stroke widths |
-| 🧹 **Eraser** | Remove unwanted strokes |
-| 📏 **Line** | Draw straight lines |
-| ⬜ **Rectangle** | Create rectangle shapes |
-| ⭕ **Circle** | Draw circles and ellipses |
-| 📝 **Text** | Add text annotations |
+| Tool | Icon | Description |
+|------|------|-------------|
+| **Brush** | 🖌️ | Freehand drawing with customizable colors and stroke widths |
+| **Eraser** | 🧹 | Remove unwanted strokes |
+| **Line** | ➖ | Draw straight lines |
+| **Arrow** | ➡️ | Draw directional arrows |
+| **Rectangle** | ⬜ | Create rectangle shapes (filled or outlined) |
+| **Circle** | ⭕ | Draw circles and ellipses (filled or outlined) |
+| **Triangle** | 🔺 | Draw triangle shapes (filled or outlined) |
+| **Diamond** | 🔷 | Draw diamond/rhombus shapes (filled or outlined) |
+| **Text** | 📝 | Add text annotations |
+
+### Fill Toggle Feature
+- 🪣 **Fill Mode** - Toggle between filled shapes (solid color) or outlined shapes (stroke only)
+- Works with Rectangle, Circle, Triangle, and Diamond tools
 
 ### Real-time Collaboration
 - 👥 **Live Cursors** - See other users' cursor positions in real-time with their username
@@ -37,19 +44,23 @@
 - 🏠 **Room System** - Create or join different collaborative rooms
 - 👤 **User Presence** - See who's online with unique color-coded indicators
 
+### 💬 Team Chat (NEW!)
+- 📨 **Real-time Messaging** - Send instant messages to your team
+- 📜 **Chat History** - Messages persist in room memory (last 100 messages)
+- 🔔 **Unread Badge** - See notification count when new messages arrive
+- 🎨 **Color-coded Users** - Messages display with user's assigned color
+
 ### Global Undo/Redo (Key Feature)
 - ↩️ **Global Undo** - Any user can undo the **last action on canvas** (regardless of who drew it)
 - ↪️ **Global Redo** - Restore the last undone action
-- 🗑️ **Clear Canvas** - Start fresh with a clean canvas
+- 🗑️ **Clear Canvas** - Start fresh with a clean canvas (with confirmation modal)
 - 💾 **Save Canvas** - Persist canvas state to server + download as PNG
 
-### Bonus Features Implemented
-- 📱 **Mobile Touch Support** - Full drawing support on touch devices
-- 🏠 **Multiple Rooms** - Isolated canvases for different groups
-- 💾 **Drawing Persistence** - Save/load sessions from server
-- ⚡ **Performance Metrics** - Real-time FPS counter and latency display
-- 🎨 **Extra Tools** - Shapes (line, rectangle, circle) and text
-- 📥 **Download PNG** - Export canvas as image file
+### UI/UX Features
+- 🌙 **Dark/Light Theme** - Toggle between themes with persistence
+- 📱 **Mobile Responsive** - Full touch support and mobile-optimized toolbar
+- ⚡ **FPS Counter** - Real-time performance monitoring
+- 📶 **Latency Display** - See connection quality in ms
 
 ---
 
@@ -63,6 +74,8 @@
 | **Vite** | Fast build tool and dev server |
 | **Socket.IO Client** | Real-time WebSocket communication |
 | **HTML Canvas API** | Raw canvas drawing (no libraries) |
+| **Lucide React** | Professional icon library |
+| **React Hot Toast** | Toast notifications |
 
 ### Backend
 | Technology | Purpose |
@@ -85,14 +98,14 @@
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/canvas-sync.git
+git clone https://github.com/anjim999/CanvasSync.git
 cd canvas-sync
 
 # 2. Install server dependencies
 cd server && npm install
 
 # 3. Start the backend (Terminal 1)
-npm start
+npm run dev
 # Server runs on http://localhost:3001
 
 # 4. Install client dependencies (new terminal)
@@ -106,7 +119,7 @@ npm run dev
 ### One-Command Start (after dependencies installed)
 ```bash
 # Terminal 1: Start server
-cd server && npm start
+cd server && npm run dev
 
 # Terminal 2: Start client
 cd client && npm run dev
@@ -114,68 +127,51 @@ cd client && npm run dev
 
 ---
 
-## 🧪 Testing with Multiple Users
-
-### Local Testing
-1. Open **http://localhost:5173** in Chrome
-2. Open **http://localhost:5173** in Firefox (or Chrome Incognito)
-3. Join the same room (e.g., "Main Canvas")
-4. Draw on one browser → See it appear on the other instantly!
-5. Test **Global Undo**: Press Ctrl+Z on Browser A → See Browser B's drawing disappear (if it was the last action)
-
-### Remote Testing
-1. Share your computer's local IP (e.g., `http://192.168.1.x:5173`)
-2. Other users on the same network can join
-3. For internet-wide testing, deploy to Vercel/Render
-
-### Key Scenarios to Test
-| Scenario | Expected Behavior |
-|----------|-------------------|
-| User A draws, User B sees it | Immediate sync (<100ms) |
-| User A presses Undo | Last action disappears for ALL users |
-| Both users draw simultaneously | Both strokes appear (last-write-wins) |
-| User A joins existing room | Receives full canvas state |
-| User disconnects | Removed from user list, cursor disappears |
-
----
-
 ## 📁 Project Structure
 
 ```
 canvas-sync/
-├── client/                     # React frontend
+├── client/                          # React frontend
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── Canvas.tsx      # Main drawing canvas with touch support
-│   │   │   ├── Toolbar.tsx     # Drawing tools panel (responsive)
-│   │   │   ├── UserPanel.tsx   # Users & rooms panel
-│   │   │   └── JoinModal.tsx   # Room join screen
+│   │   │   ├── Canvas.tsx           # Main drawing canvas with touch support
+│   │   │   ├── Toolbar.tsx          # Drawing tools (Lucide icons)
+│   │   │   ├── UserPanel.tsx        # Users & rooms panel
+│   │   │   ├── JoinModal.tsx        # Room join screen
+│   │   │   ├── ConfirmationModal.tsx # Clear canvas confirmation
+│   │   │   └── chat/                # Chat feature module
+│   │   │       ├── ChatPanel.tsx    # Chat messages UI
+│   │   │       ├── ChatToggle.tsx   # FAB button with unread badge
+│   │   │       └── index.ts         # Clean exports
 │   │   ├── hooks/
-│   │   │   ├── useSocket.ts    # Socket.IO connection management
-│   │   │   └── useDraw.ts      # Drawing logic (raw Canvas API)
+│   │   │   ├── useSocket.ts         # Socket.IO connection management
+│   │   │   ├── useDraw.ts           # Drawing logic (shapes, fill, etc.)
+│   │   │   └── useChat.ts           # Chat message handling
+│   │   ├── config/
+│   │   │   └── env.ts               # Environment configuration
 │   │   ├── types/
-│   │   │   └── index.ts        # TypeScript interfaces
-│   │   ├── App.tsx             # Main app with responsive layout
-│   │   └── index.css           # Global styles
+│   │   │   └── index.ts             # TypeScript interfaces (Drawing, Chat)
+│   │   ├── App.tsx                  # Main app with responsive layout
+│   │   ├── App.css                  # Global animations
+│   │   └── main.tsx                 # React entry point
 │   ├── index.html
 │   └── package.json
 │
-├── server/                     # Node.js backend
+├── server/                          # Node.js backend
 │   ├── src/
-│   │   ├── server.ts           # Express + Socket.IO setup
-│   │   ├── socket-handlers.ts  # WebSocket event handlers
-│   │   ├── state-manager.ts    # Canvas state & global undo/redo logic
-│   │   └── types.ts            # Shared TypeScript types
-│   ├── data/                   # Saved canvas JSON files
+│   │   ├── server.ts                # Express + Socket.IO setup
+│   │   ├── socket-handlers.ts       # WebSocket event handlers
+│   │   ├── state-manager.ts         # Canvas state, undo/redo, chat history
+│   │   └── types.ts                 # Shared TypeScript types
+│   ├── data/                        # Saved canvas JSON files
 │   └── package.json
 │
 ├── .github/
 │   └── workflows/
-│       └── ci.yml              # GitHub Actions CI/CD
+│       └── ci.yml                   # GitHub Actions CI/CD
 │
-├── vercel.json                 # Vercel deployment config
-├── ARCHITECTURE.md             # System design documentation
-└── README.md                   # This file
+├── ARCHITECTURE.md                  # System design documentation
+└── README.md                        # This file
 ```
 
 ---
@@ -186,14 +182,76 @@ canvas-sync/
 | Command | Description |
 |---------|-------------|
 | `npm run dev` | Start development server (hot reload) |
-| `npm run build` | Build for production |
+| `npm run build` | Build for production (TypeScript check + Vite) |
 | `npm run preview` | Preview production build locally |
 
 ### Server
 | Command | Description |
 |---------|-------------|
-| `npm start` | Start server with nodemon (auto-restart) |
+| `npm run dev` | Start server with nodemon (auto-restart) |
 | `npm run build` | Compile TypeScript to JavaScript |
+| `npm start` | Run compiled production server |
+
+---
+
+## 📡 WebSocket Protocol
+
+### Drawing Events
+| Event | Direction | Description |
+|-------|-----------|-------------|
+| `join_room` | Client → Server | Join a collaborative room |
+| `leave_room` | Client → Server | Leave current room |
+| `draw_action` | Bidirectional | Send/receive drawing actions |
+| `cursor_move` | Client → Server | Share cursor position |
+| `cursor_update` | Server → Client | Broadcast cursor positions |
+| `undo` | Client → Server | Request global undo |
+| `undo_applied` | Server → Client | Notify all users of undo |
+| `redo` | Client → Server | Request global redo |
+| `redo_applied` | Server → Client | Notify all users of redo |
+| `canvas_state` | Server → Client | Full canvas sync on join |
+| `clear_canvas` | Bidirectional | Clear all drawings |
+| `save_canvas` | Client → Server | Persist to server |
+
+### Chat Events
+| Event | Direction | Description |
+|-------|-----------|-------------|
+| `send_chat` | Client → Server | Send a chat message |
+| `chat_message` | Server → Client | Broadcast message to room |
+| `chat_history` | Server → Client | Send last 100 messages on join |
+
+---
+
+## 🎯 Key Technical Decisions
+
+1. **Socket.IO over raw WebSockets**
+   - Automatic reconnection with exponential backoff
+   - Built-in room support for isolation
+   - Fallback to HTTP long-polling if WebSocket fails
+
+2. **Raw Canvas API (no Fabric.js/Konva)**
+   - Full control over rendering performance
+   - Demonstrates deep Canvas understanding
+   - Direct 2D context manipulation
+
+3. **Server-side State (Single Source of Truth)**
+   - Prevents state drift between clients
+   - Authoritative undo/redo
+   - Easy persistence to disk
+
+4. **Global Undo/Redo (Assignment Requirement)**
+   - Any user can undo the last action (from any user)
+   - Redo stack cleared when new action is added
+   - Server controls history, clients receive notifications
+
+5. **Modular Frontend Architecture**
+   - Custom hooks for logic separation (`useSocket`, `useDraw`, `useChat`)
+   - Feature-based component organization (`chat/`)
+   - Shared types between client and server
+
+6. **Professional UI with Lucide Icons**
+   - Replaced emoji icons with SVG-based Lucide React icons
+   - Consistent visual language
+   - Dark/Light theme support
 
 ---
 
@@ -221,79 +279,14 @@ canvas-sync/
 
 ---
 
-## ⚠️ Known Limitations & Bugs
+## ⚠️ Known Limitations
 
 | Issue | Description | Workaround |
 |-------|-------------|------------|
 | **Cold Start Delay** | Backend on free Render tier sleeps after inactivity | Wait 30-60 seconds for first request |
 | **No Authentication** | Users identified by socket ID only | Intended for demo purposes |
-| **No Pressure Sensitivity** | Stroke width is constant | Could be added with Pointer Events API |
+| **Chat Not Persisted** | Messages stored in memory only | Add database for production use |
 | **Large Canvas Performance** | Many actions (1000+) may slow rendering | Clear canvas periodically |
-| **Text Tool UX** | Text input via prompt() | Could use inline text editor |
-
----
-
-## ⏱️ Time Spent on Project
-
-| Phase | Duration | Activities |
-|-------|----------|------------|
-| **Planning & Research** | 2 hours | Understanding requirements, Socket.IO docs, Canvas API |
-| **Backend Development** | 4 hours | Express setup, Socket.IO handlers, state management |
-| **Frontend Core** | 6 hours | Canvas drawing, React components, responsive design |
-| **Real-time Features** | 4 hours | Live sync, cursors, global undo/redo |
-| **Mobile Support** | 2 hours | Touch events, responsive layout |
-| **Testing & Debugging** | 3 hours | Multi-user testing, edge cases |
-| **Documentation** | 2 hours | README, ARCHITECTURE.md |
-| **Deployment Setup** | 1 hour | Vercel, Render, CI/CD |
-| **TOTAL** | **~24 hours** | Over 3-4 days |
-
----
-
-## 📡 WebSocket Protocol
-
-| Event | Direction | Description |
-|-------|-----------|-------------|
-| `join_room` | Client → Server | Join a collaborative room |
-| `leave_room` | Client → Server | Leave current room |
-| `draw_action` | Bidirectional | Send/receive drawing actions |
-| `cursor_move` | Client → Server | Share cursor position |
-| `cursor_update` | Server → Client | Broadcast cursor positions |
-| `undo` | Client → Server | Request global undo |
-| `undo_applied` | Server → Client | Notify all users of undo |
-| `redo` | Client → Server | Request global redo |
-| `redo_applied` | Server → Client | Notify all users of redo |
-| `canvas_state` | Server → Client | Full canvas sync on join |
-| `clear_canvas` | Bidirectional | Clear all drawings |
-| `save_canvas` | Client → Server | Persist to server |
-
----
-
-## 🎯 Key Technical Decisions
-
-1. **Socket.IO over raw WebSockets**
-   - Automatic reconnection with exponential backoff
-   - Built-in room support for isolation
-   - Fallback to HTTP long-polling if WebSocket fails
-
-2. **Raw Canvas API (no Fabric.js/Konva)**
-   - Full control over rendering performance
-   - Demonstrates deep Canvas understanding
-   - Direct 2D context manipulation
-
-3. **Server-side State (Single Source of Truth)**
-   - Prevents state drift between clients
-   - Authoritative undo/redo
-   - Easy persistence to disk
-
-4. **Global Undo/Redo (Assignment Requirement)**
-   - Any user can undo the last action (from any user)
-   - Redo stack cleared when new action is added
-   - Server controls history, clients receive notifications
-
-5. **TypeScript Everywhere**
-   - Shared types between client and server
-   - Compile-time error catching
-   - Better IDE support and documentation
 
 ---
 
