@@ -1,5 +1,5 @@
 import React from 'react';
-import { Toaster } from 'react-hot-toast';
+
 import { MobileLayout, DesktopLayout } from '../components/layout';
 import { JoinModal } from '../components/JoinModal';
 import { useAppLogic } from '../hooks/useAppLogic';
@@ -21,17 +21,6 @@ export const DrawPage: React.FC = () => {
     if (!hasJoined) {
         return (
             <>
-                <Toaster
-                    position="top-center"
-                    toastOptions={{
-                        duration: 3000,
-                        style: {
-                            background: '#1a1a2e',
-                            color: '#fff',
-                            border: '1px solid rgba(99, 102, 241, 0.3)',
-                        },
-                    }}
-                />
                 <JoinModal
                     onJoin={handleJoin}
                     isDarkTheme={isDarkTheme}

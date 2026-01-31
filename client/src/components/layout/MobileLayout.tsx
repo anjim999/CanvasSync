@@ -1,5 +1,5 @@
 import React from 'react';
-import { Toaster } from 'react-hot-toast';
+
 import { Sun, Moon, Palette, Users } from 'lucide-react';
 import { Canvas } from '../Canvas';
 import { Toolbar } from '../Toolbar';
@@ -83,17 +83,6 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
             backgroundColor: theme.bg,
             position: 'relative',
         }}>
-            <Toaster
-                position="top-center"
-                toastOptions={{
-                    duration: 3000,
-                    style: {
-                        background: theme.panelBg,
-                        color: theme.text,
-                        border: `1px solid ${theme.border}`,
-                    },
-                }}
-            />
             {/* Mobile Header */}
             <div style={{
                 display: 'flex',

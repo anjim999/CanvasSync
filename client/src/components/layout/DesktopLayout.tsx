@@ -1,5 +1,5 @@
 import React from 'react';
-import { Toaster } from 'react-hot-toast';
+
 import { Canvas } from '../Canvas';
 import { Toolbar } from '../Toolbar';
 import { UserPanel } from '../UserPanel';
@@ -72,18 +72,6 @@ export const DesktopLayout: React.FC<DesktopLayoutProps> = ({
 }) => {
     return (
         <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', backgroundColor: theme.bg }}>
-            <Toaster
-                position="top-center"
-                toastOptions={{
-                    duration: 3000,
-                    style: {
-                        background: theme.panelBg,
-                        color: theme.text,
-                        border: `1px solid ${theme.border}`,
-                    },
-                }}
-            />
-
             {/* Left Toolbar */}
             <Toolbar
                 currentTool={currentTool}
