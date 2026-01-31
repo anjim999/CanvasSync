@@ -14,10 +14,12 @@ function App() {
   const [currentTool, setCurrentTool] = useState<Tool>('brush');
   const [currentColor, setCurrentColor] = useState('#ffffff');
   const [strokeWidth, setStrokeWidth] = useState(4);
+  const [isFilled, setIsFilled] = useState(false);
   const [actions, setActions] = useState<DrawAction[]>([]);
   const [hasJoined, setHasJoined] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showUserPanel, setShowUserPanel] = useState(false);
+  const [showClearModal, setShowClearModal] = useState(false);
 
   // Theme state (dark/light)
   const [isDarkTheme, setIsDarkTheme] = useState(() => {
@@ -25,9 +27,6 @@ function App() {
     if (saved) return saved === 'dark';
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
-
-  // Theme colors
-  const [showClearModal, setShowClearModal] = useState(false);
 
   // Theme colors
   const theme = {
@@ -424,6 +423,7 @@ function App() {
             currentTool={currentTool}
             currentColor={currentColor}
             strokeWidth={strokeWidth}
+            isFilled={isFilled}
             userId={userId}
             actions={actions}
             onDraw={handleDraw}
@@ -451,9 +451,11 @@ function App() {
           currentTool={currentTool}
           currentColor={currentColor}
           strokeWidth={strokeWidth}
+          isFilled={isFilled}
           onToolChange={setCurrentTool}
           onColorChange={setCurrentColor}
           onStrokeWidthChange={setStrokeWidth}
+          onToggleFill={() => setIsFilled(!isFilled)}
           onUndo={handleUndo}
           onRedo={handleRedo}
           onClear={handleClear}
@@ -524,16 +526,16 @@ function App() {
         }}
       />
 
-
-
       {/* Left Toolbar */}
       <Toolbar
         currentTool={currentTool}
         currentColor={currentColor}
         strokeWidth={strokeWidth}
+        isFilled={isFilled}
         onToolChange={setCurrentTool}
         onColorChange={setCurrentColor}
         onStrokeWidthChange={setStrokeWidth}
+        onToggleFill={() => setIsFilled(!isFilled)}
         onUndo={handleUndo}
         onRedo={handleRedo}
         onClear={handleClear}
@@ -552,6 +554,7 @@ function App() {
           currentTool={currentTool}
           currentColor={currentColor}
           strokeWidth={strokeWidth}
+          isFilled={isFilled}
           userId={userId}
           actions={actions}
           onDraw={handleDraw}
@@ -592,4 +595,3 @@ function App() {
 }
 
 export default App;
-

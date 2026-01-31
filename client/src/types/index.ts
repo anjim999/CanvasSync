@@ -7,7 +7,7 @@ export interface Point {
 }
 
 // Drawing tools
-export type Tool = 'brush' | 'eraser' | 'rectangle' | 'circle' | 'line' | 'text';
+export type Tool = 'brush' | 'eraser' | 'rectangle' | 'circle' | 'line' | 'arrow' | 'triangle' | 'diamond' | 'text';
 
 // Single drawing stroke/shape
 export interface DrawAction {
@@ -18,6 +18,7 @@ export interface DrawAction {
     points: Point[]; // For strokes: array of points, for shapes: [start, end]
     color: string;
     strokeWidth: number;
+    isFilled?: boolean; // New property for filled shapes
     text?: string; // For text tool
     timestamp: number;
     isUndone?: boolean; // For undo/redo tracking

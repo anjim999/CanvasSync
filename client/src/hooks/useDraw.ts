@@ -7,9 +7,10 @@ interface UseDrawProps {
     currentColor: string;
     strokeWidth: number;
     userId: string | null;
+    isFilled?: boolean;
 }
 
-export function useDraw({ onDraw, currentTool, currentColor, strokeWidth, userId }: UseDrawProps) {
+export function useDraw({ onDraw, currentTool, currentColor, strokeWidth, userId, isFilled = false }: UseDrawProps) {
     const [isDrawing, setIsDrawing] = useState(false);
     const currentAction = useRef<DrawAction | null>(null);
     const lastPoint = useRef<Point | null>(null);
@@ -57,10 +58,11 @@ export function useDraw({ onDraw, currentTool, currentColor, strokeWidth, userId
                 points: [point],
                 color: currentTool === 'eraser' ? '#0f0f1a' : currentColor, // Eraser uses background color
                 strokeWidth: currentTool === 'eraser' ? strokeWidth * 2 : strokeWidth,
+                isFilled: isFilled && currentTool !== 'line' && currentTool !== 'arrow' && currentTool !== 'brush' && currentTool !== 'eraser',
                 timestamp: Date.now(),
             };
         },
-        [userId, currentTool, currentColor, strokeWidth, getCanvasCoordinates]
+        [userId, currentTool, currentColor, strokeWidth, isFilled, getCanvasCoordinates]
     );
 
     // Continue drawing
@@ -165,18 +167,83 @@ export function drawAction(ctx: CanvasRenderingContext2D, action: DrawAction): v
         ctx.beginPath();
         ctx.strokeStyle = action.color;
         ctx.lineWidth = action.strokeWidth;
+        ctx.fillStyle = action.color;
         ctx.lineCap = 'round';
 
         if (action.tool === 'rectangle') {
-            ctx.strokeRect(start.x, start.y, end.x - start.x, end.y - start.y);
+            if (action.isFilled) {
+                ctx.fillRect(start.x, start.y, end.x - start.x, end.y - start.y);
+            } else {
+                ctx.strokeRect(start.x, start.y, end.x - start.x, end.y - start.y);
+            }
         } else if (action.tool === 'circle') {
             const radius = Math.sqrt(Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2));
+            ctx.beginPath();
             ctx.arc(start.x, start.y, radius, 0, Math.PI * 2);
-            ctx.stroke();
+            if (action.isFilled) {
+                ctx.fill();
+            } else {
+                ctx.stroke();
+            }
         } else if (action.tool === 'line') {
+            ctx.beginPath();
             ctx.moveTo(start.x, start.y);
             ctx.lineTo(end.x, end.y);
             ctx.stroke();
+        } else if (action.tool === 'arrow') {
+            // Draw line
+            ctx.beginPath();
+            ctx.moveTo(start.x, start.y);
+            ctx.lineTo(end.x, end.y);
+            ctx.stroke();
+
+            // Draw arrowhead
+            const angle = Math.atan2(end.y - start.y, end.x - start.x);
+            const headLength = Math.max(15, action.strokeWidth * 3);
+
+            ctx.beginPath();
+            ctx.moveTo(end.x, end.y);
+            ctx.lineTo(
+                end.x - headLength * Math.cos(angle - Math.PI / 6),
+                end.y - headLength * Math.sin(angle - Math.PI / 6)
+            );
+            ctx.moveTo(end.x, end.y);
+            ctx.lineTo(
+                end.x - headLength * Math.cos(angle + Math.PI / 6),
+                end.y - headLength * Math.sin(angle + Math.PI / 6)
+            );
+            ctx.stroke();
+        } else if (action.tool === 'triangle') {
+            const width = end.x - start.x;
+
+            ctx.beginPath();
+            ctx.moveTo(start.x + width / 2, start.y);  // Top
+            ctx.lineTo(start.x, end.y);                // Bottom left
+            ctx.lineTo(end.x, end.y);                  // Bottom right
+            ctx.closePath();
+
+            if (action.isFilled) {
+                ctx.fill();
+            } else {
+                ctx.stroke();
+            }
+
+        } else if (action.tool === 'diamond') {
+            const centerX = (start.x + end.x) / 2;
+            const centerY = (start.y + end.y) / 2;
+
+            ctx.beginPath();
+            ctx.moveTo(centerX, start.y); // Top
+            ctx.lineTo(end.x, centerY);   // Right
+            ctx.lineTo(centerX, end.y);   // Bottom
+            ctx.lineTo(start.x, centerY); // Left
+            ctx.closePath();
+
+            if (action.isFilled) {
+                ctx.fill();
+            } else {
+                ctx.stroke();
+            }
         }
     } else if (action.type === 'text' && action.text && action.points.length > 0) {
         const pos = action.points[0];
@@ -193,7 +260,6 @@ export function redrawCanvas(
     canvasWidth: number,
     canvasHeight: number
 ): void {
-    // Clear canvas
     // Clear canvas
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 

@@ -14,6 +14,7 @@ interface CanvasProps {
     onActionsChange: (actions: DrawAction[]) => void;
     backgroundColor?: string;
     isDarkTheme?: boolean;
+    isFilled?: boolean;
 }
 
 const CANVAS_WIDTH = 1920;
@@ -31,6 +32,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     onActionsChange,
     backgroundColor = '#0f0f1a', // Default fallback
     isDarkTheme = true,
+    isFilled = false,
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -43,6 +45,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         currentColor,
         strokeWidth,
         userId,
+        isFilled,
     });
 
     // Store refs for touch handlers to access latest values
