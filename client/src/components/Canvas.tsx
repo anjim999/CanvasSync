@@ -1,6 +1,8 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import type { DrawAction, Point, Tool } from '../types';
 import { useDraw, drawAction, redrawCanvas } from '../hooks/useDraw';
+import { FPSCounter } from './canvas/FPSCounter';
+import { RemoteCursorOverlay } from './canvas/RemoteCursorOverlay';
 
 interface CanvasProps {
     currentTool: Tool;
@@ -198,21 +200,6 @@ export const Canvas: React.FC<CanvasProps> = ({
         backgroundColor,
     };
 
-    const fpsCounterStyle: React.CSSProperties = {
-        position: 'absolute',
-        top: '8px',
-        right: '8px',
-        zIndex: 20,
-        backgroundColor: isDarkTheme ? 'rgba(26, 26, 46, 0.9)' : 'rgba(255, 255, 255, 0.9)',
-        backdropFilter: 'blur(8px)',
-        padding: '4px 12px',
-        borderRadius: '8px',
-        border: isDarkTheme ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)',
-        color: isDarkTheme ? '#4ade80' : '#15803d', // Green text for FPS
-        fontWeight: 600,
-        boxShadow: isDarkTheme ? 'none' : '0 2px 8px rgba(0,0,0,0.1)',
-    };
-
     const canvasStyle: React.CSSProperties = {
         width: '100%',
         height: '100%',
@@ -228,10 +215,7 @@ export const Canvas: React.FC<CanvasProps> = ({
     return (
         <div ref={containerRef} style={containerStyle}>
             {/* FPS Counter */}
-            <div style={fpsCounterStyle}>
-                <span style={{ color: '#4ade80', fontWeight: 600 }}>{fps}</span>
-                <span style={{ color: '#9ca3af', marginLeft: '4px' }}>FPS</span>
-            </div>
+            <FPSCounter fps={fps} isDarkTheme={isDarkTheme} />
 
             {/* Main Canvas */}
             <canvas
@@ -246,61 +230,13 @@ export const Canvas: React.FC<CanvasProps> = ({
             />
 
             {/* Remote Cursors */}
-            {Array.from(remoteCursors.entries()).map(([odId, { position, color, username }]) => {
-                const canvas = canvasRef.current;
-                const container = containerRef.current;
-                if (!canvas || !container) return null;
-
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = rect.width / CANVAS_WIDTH;
-                const scaleY = rect.height / CANVAS_HEIGHT;
-
-                const screenX = position.x * scaleX + (container.clientWidth - rect.width) / 2;
-                const screenY = position.y * scaleY + (container.clientHeight - rect.height) / 2;
-
-                return (
-                    <div
-                        key={odId}
-                        style={{
-                            position: 'absolute',
-                            left: screenX,
-                            top: screenY,
-                            transform: 'translate(-2px, -2px)',
-                            pointerEvents: 'none',
-                            zIndex: 30,
-                        }}
-                    >
-                        {/* Cursor dot */}
-                        <div
-                            style={{
-                                width: '16px',
-                                height: '16px',
-                                borderRadius: '50%',
-                                backgroundColor: color,
-                                border: '2px solid white',
-                                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                            }}
-                        />
-                        {/* Username label */}
-                        <div
-                            style={{
-                                position: 'absolute',
-                                left: '20px',
-                                top: '0',
-                                padding: '2px 8px',
-                                borderRadius: '4px',
-                                fontSize: '12px',
-                                whiteSpace: 'nowrap',
-                                backgroundColor: color,
-                                color: 'white',
-                                fontWeight: 500,
-                            }}
-                        >
-                            {username}
-                        </div>
-                    </div>
-                );
-            })}
+            <RemoteCursorOverlay
+                remoteCursors={remoteCursors}
+                canvasRef={canvasRef}
+                containerRef={containerRef}
+                canvasWidth={CANVAS_WIDTH}
+                canvasHeight={CANVAS_HEIGHT}
+            />
         </div>
     );
 };
