@@ -133,24 +133,40 @@ export const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                     theme={theme}
                 />
 
-                {/* Chat Toggle Button */}
-                <ChatToggle
-                    onClick={toggleChat}
-                    unreadCount={chatUnreadCount}
-                    isOpen={isChatOpen}
-                    isDarkTheme={isDarkTheme}
-                />
+                {/* Chat Toggle Button - Fixed position left of UserPanel */}
+                <div style={{
+                    position: 'fixed',
+                    right: '280px',
+                    bottom: '24px',
+                    zIndex: 50
+                }}>
+                    <ChatToggle
+                        onClick={toggleChat}
+                        unreadCount={chatUnreadCount}
+                        isOpen={isChatOpen}
+                        isDarkTheme={isDarkTheme}
+                    />
+                </div>
 
-                {/* Chat Panel */}
-                <ChatPanel
-                    messages={chatMessages}
-                    onSendMessage={(text) => sendChatMessage(text, userColor)}
-                    isOpen={isChatOpen}
-                    onClose={() => setChatOpen(false)}
-                    currentUserId={currentUserId}
-                    userColor={userColor}
-                    isDarkTheme={isDarkTheme}
-                />
+                {/* Chat Panel - Fixed position left of UserPanel */}
+                {isChatOpen && (
+                    <div style={{
+                        position: 'fixed',
+                        right: '280px',
+                        bottom: '90px',
+                        zIndex: 50
+                    }}>
+                        <ChatPanel
+                            messages={chatMessages}
+                            onSendMessage={(text) => sendChatMessage(text, userColor)}
+                            isOpen={isChatOpen}
+                            onClose={() => setChatOpen(false)}
+                            currentUserId={currentUserId}
+                            userColor={userColor}
+                            isDarkTheme={isDarkTheme}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Right Panel */}

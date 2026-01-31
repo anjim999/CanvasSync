@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ArrowRight } from 'lucide-react';
 
 interface JoinFormProps {
     onJoin: (username: string, roomId: string) => void;
@@ -130,9 +131,13 @@ export const JoinForm: React.FC<JoinFormProps> = ({ onJoin, isMobile, isDarkThem
                         opacity: username.trim() ? 1 : 0.5,
                         boxShadow: '0 20px 40px -10px rgba(99, 102, 241, 0.5)',
                         WebkitTapHighlightColor: 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
                     }}
                 >
-                    Start Drawing 🚀
+                    Start Drawing <ArrowRight size={isMobile ? 20 : 24} />
                 </button>
             </form>
         </div>

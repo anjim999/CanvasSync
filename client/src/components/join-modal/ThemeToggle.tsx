@@ -1,4 +1,5 @@
 import React from 'react';
+import { Sun, Moon } from 'lucide-react';
 
 interface ThemeToggleProps {
     isDarkTheme: boolean;
@@ -32,7 +33,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ isDarkTheme, onToggleT
             }}
             title={isDarkTheme ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
         >
-            {isDarkTheme ? '☀️' : '🌙'}
+            {isDarkTheme ? <Sun size={20} /> : <Moon size={20} />}
         </button>
     );
 };

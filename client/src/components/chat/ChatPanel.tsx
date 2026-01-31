@@ -13,6 +13,7 @@ interface ChatPanelProps {
     currentUserId: string | null;
     userColor: string;
     isDarkTheme: boolean;
+    style?: React.CSSProperties; // Allow custom positioning
 }
 
 export const ChatPanel: React.FC<ChatPanelProps> = ({
@@ -23,6 +24,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     currentUserId,
     userColor,
     isDarkTheme,
+    style = {},
 }) => {
     if (!isOpen) return null;
 
@@ -30,11 +32,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 
     return (
         <div style={{
-            position: 'absolute',
-            right: '250px', // Left of UserPanel
-            bottom: '20px',
             width: '320px',
             height: '400px',
+            maxWidth: '100%',
+            maxHeight: '100%',
             backgroundColor: theme.bg,
             backdropFilter: 'blur(12px)',
             borderRadius: '16px',
@@ -43,7 +44,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
             flexDirection: 'column',
             overflow: 'hidden',
             boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
-            zIndex: 40,
+            ...style, // Allow override
         }}>
             <ChatHeader
                 userColor={userColor}

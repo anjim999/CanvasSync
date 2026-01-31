@@ -6,6 +6,7 @@ interface ChatToggleProps {
     unreadCount: number;
     isOpen: boolean;
     isDarkTheme: boolean;
+    style?: React.CSSProperties; // Allow custom positioning
 }
 
 export const ChatToggle: React.FC<ChatToggleProps> = ({
@@ -13,14 +14,12 @@ export const ChatToggle: React.FC<ChatToggleProps> = ({
     unreadCount,
     isOpen,
     isDarkTheme,
+    style = {},
 }) => {
     return (
         <button
             onClick={onClick}
             style={{
-                position: 'fixed',
-                right: '260px', // Left of UserPanel
-                bottom: '20px',
                 width: '52px',
                 height: '52px',
                 borderRadius: '50%',
@@ -32,7 +31,8 @@ export const ChatToggle: React.FC<ChatToggleProps> = ({
                 justifyContent: 'center',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
                 transition: 'all 0.2s',
-                zIndex: 35,
+                position: 'relative', // For badge positioning
+                ...style, // Allow override
             }}
             title="Team Chat"
         >

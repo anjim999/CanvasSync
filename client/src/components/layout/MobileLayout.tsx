@@ -1,5 +1,6 @@
 import React from 'react';
 import { Toaster } from 'react-hot-toast';
+import { Sun, Moon, Palette, Users } from 'lucide-react';
 import { Canvas } from '../Canvas';
 import { Toolbar } from '../Toolbar';
 import { UserPanel } from '../UserPanel';
@@ -103,7 +104,7 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
                 flexShrink: 0,
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '20px' }}>🎨</span>
+                    <Palette size={20} color={theme.text} />
                     <span style={{ fontWeight: 600, color: theme.text, fontSize: '14px' }}>CanvasSync</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -119,12 +120,13 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
                             border: 'none',
                             cursor: 'pointer',
                             backgroundColor: theme.buttonBg,
+                            color: theme.text, // Ensure icon takes text color
                             fontSize: '16px',
                             WebkitTapHighlightColor: 'transparent',
                         }}
                         title={isDarkTheme ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
                     >
-                        {isDarkTheme ? '☀️' : '🌙'}
+                        {isDarkTheme ? <Sun size={18} /> : <Moon size={18} />}
                     </button>
                     <div style={{
                         display: 'flex',
@@ -153,9 +155,10 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
                             display: 'flex',
                             alignItems: 'center',
                             gap: '4px',
+                            color: theme.text,
                         }}
                     >
-                        <span style={{ fontSize: '12px', color: isDarkTheme ? 'white' : (showUserPanel ? 'white' : '#1a1a2e') }}>👥</span>
+                        <Users size={16} color={isDarkTheme ? 'white' : (showUserPanel ? 'white' : '#1a1a2e')} />
                         <span style={{ fontSize: '12px', color: isDarkTheme ? 'white' : (showUserPanel ? 'white' : '#1a1a2e') }}>{users.length}</span>
                     </button>
                 </div>
@@ -195,15 +198,22 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
                 theme={theme}
             />
 
-            {/* Chat Toggle Button (Mobile) */}
-            <ChatToggle
-                onClick={toggleChat}
-                unreadCount={chatUnreadCount}
-                isOpen={isChatOpen}
-                isDarkTheme={isDarkTheme}
-            />
+            {/* Chat Toggle Button (Mobile) - Fixed position above toolbar */}
+            <div style={{
+                position: 'fixed',
+                right: '16px',
+                bottom: '90px',
+                zIndex: 50
+            }}>
+                <ChatToggle
+                    onClick={toggleChat}
+                    unreadCount={chatUnreadCount}
+                    isOpen={isChatOpen}
+                    isDarkTheme={isDarkTheme}
+                />
+            </div>
 
-            {/* Chat Panel (Mobile) */}
+            {/* Chat Panel (Mobile) - Full screen modal overlay */}
             {isChatOpen && (
                 <div style={{
                     position: 'fixed',
@@ -212,19 +222,19 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backgroundColor: 'rgba(0,0,0,0.5)'
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    padding: '16px',
                 }}>
-                    <div style={{ position: 'relative', width: '90%', height: '70%' }}>
-                        <ChatPanel
-                            messages={chatMessages}
-                            onSendMessage={(text) => sendChatMessage(text, userColor)}
-                            isOpen={true}
-                            onClose={() => setChatOpen(false)}
-                            currentUserId={currentUserId}
-                            userColor={userColor}
-                            isDarkTheme={isDarkTheme}
-                        />
-                    </div>
+                    <ChatPanel
+                        messages={chatMessages}
+                        onSendMessage={(text) => sendChatMessage(text, userColor)}
+                        isOpen={true}
+                        onClose={() => setChatOpen(false)}
+                        currentUserId={currentUserId}
+                        userColor={userColor}
+                        isDarkTheme={isDarkTheme}
+                        style={{ width: '100%', height: '70%', maxWidth: '400px' }}
+                    />
                 </div>
             )}
 

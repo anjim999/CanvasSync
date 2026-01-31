@@ -1,4 +1,5 @@
 import React from 'react';
+import { Palette, Sparkles } from 'lucide-react';
 
 interface LogoSectionProps {
     isMobile: boolean;
@@ -19,7 +20,7 @@ export const LogoSection: React.FC<LogoSectionProps> = ({ isMobile, isDarkTheme 
                 marginBottom: isMobile ? '16px' : '24px',
                 boxShadow: '0 25px 50px -12px rgba(99, 102, 241, 0.4)'
             }}>
-                <span style={{ fontSize: isMobile ? '36px' : '48px' }}>🎨</span>
+                <Palette size={isMobile ? 36 : 48} color="white" />
             </div>
             <h1 style={{
                 fontSize: isMobile ? '32px' : '48px',
@@ -30,8 +31,8 @@ export const LogoSection: React.FC<LogoSectionProps> = ({ isMobile, isDarkTheme 
             }}>CanvasSync</h1>
             <p style={{ fontSize: isMobile ? '14px' : '18px', color: '#9ca3af' }}>Real-time collaborative drawing</p>
             {isMobile && (
-                <p style={{ fontSize: '12px', color: '#6366f1', marginTop: '8px' }}>
-                    ✨ Touch drawing supported!
+                <p style={{ fontSize: '12px', color: '#6366f1', marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                    <Sparkles size={14} /> Touch drawing supported!
                 </p>
             )}
         </div>

@@ -5,9 +5,21 @@ import { useChat } from './useChat';
 import type { DrawAction, Tool, Point } from '../types';
 
 export function useAppLogic() {
-    // Drawing state
+    // Theme state (dark/light) - must be initialized first for color logic
+    const [isDarkTheme, setIsDarkTheme] = useState(() => {
+        const saved = localStorage.getItem('canvasync-theme');
+        if (saved) return saved === 'dark';
+        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    });
+
+    // Drawing state - color depends on theme
     const [currentTool, setCurrentTool] = useState<Tool>('brush');
-    const [currentColor, setCurrentColor] = useState('#ffffff');
+    const [currentColor, setCurrentColor] = useState(() => {
+        // Initialize based on saved theme or system preference
+        const saved = localStorage.getItem('canvasync-theme');
+        const isDark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+        return isDark ? '#ffffff' : '#000000';
+    });
     const [strokeWidth, setStrokeWidth] = useState(4);
     const [isFilled, setIsFilled] = useState(false);
     const [actions, setActions] = useState<DrawAction[]>([]);
@@ -15,13 +27,6 @@ export function useAppLogic() {
     const [isMobile, setIsMobile] = useState(false);
     const [showUserPanel, setShowUserPanel] = useState(false);
     const [showClearModal, setShowClearModal] = useState(false);
-
-    // Theme state (dark/light)
-    const [isDarkTheme, setIsDarkTheme] = useState(() => {
-        const saved = localStorage.getItem('canvasync-theme');
-        if (saved) return saved === 'dark';
-        return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    });
 
     // Theme colors
     const theme = {
@@ -35,13 +40,20 @@ export function useAppLogic() {
         buttonActiveBg: '#6366f1',
     };
 
-    // Toggle theme
+    // Toggle theme and update default color if using black/white
     const toggleTheme = useCallback(() => {
         const newTheme = !isDarkTheme;
         setIsDarkTheme(newTheme);
         localStorage.setItem('canvasync-theme', newTheme ? 'dark' : 'light');
+
+        // Auto-switch color if user is using the default contrast color
+        setCurrentColor(prev => {
+            if (newTheme && prev === '#000000') return '#ffffff'; // Switching to dark, change black to white
+            if (!newTheme && prev === '#ffffff') return '#000000'; // Switching to light, change white to black
+            return prev; // Keep custom color
+        });
+
         toast.success(newTheme ? 'Dark mode enabled' : 'Light mode enabled', {
-            icon: newTheme ? '🌙' : '☀️',
             id: 'theme-toast',
         });
     }, [isDarkTheme]);
@@ -217,12 +229,12 @@ export function useAppLogic() {
     const confirmClear = useCallback(() => {
         clearCanvas();
         setShowClearModal(false);
-        toast.success('Canvas cleared!', { icon: '🗑️' });
+        toast.success('Canvas cleared!');
     }, [clearCanvas]);
 
     const handleSave = useCallback(() => {
         saveCanvas();
-        toast.success('Canvas saved to server!', { icon: '💾' });
+        toast.success('Canvas saved to server!');
     }, [saveCanvas]);
 
     const handleDownload = useCallback(() => {
@@ -238,13 +250,13 @@ export function useAppLogic() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        toast.success('Image downloaded!', { icon: '📥' });
+        toast.success('Image downloaded!');
     }, []);
 
     const handleJoin = useCallback((username: string, roomId: string) => {
         joinRoom(roomId, username);
         setHasJoined(true);
-        toast.success(`Joined room successfully!`, { icon: '🎨' });
+        toast.success('Joined room successfully!');
     }, [joinRoom]);
 
     const handleLeave = useCallback(() => {
