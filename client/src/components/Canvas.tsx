@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import type { DrawAction, Point, Tool } from '../types';
-import { useDraw, drawAction, redrawCanvas } from '../hooks/useDraw';
+import { useDraw, drawAction } from '../hooks/useDraw';
+import { findActionAtPoint } from '../utils/drawUtils';
 import { FPSCounter } from './canvas/FPSCounter';
 import { RemoteCursorOverlay } from './canvas/RemoteCursorOverlay';
 
@@ -12,6 +13,7 @@ interface CanvasProps {
     actions: DrawAction[];
     onDraw: (action: DrawAction) => void;
     onCursorMove: (position: Point) => void;
+    onMoveAction?: (actionId: string, deltaX: number, deltaY: number) => void;
     remoteCursors: Map<string, { position: Point; color: string; username: string }>;
     onActionsChange: (actions: DrawAction[]) => void;
     backgroundColor?: string;
@@ -30,9 +32,10 @@ export const Canvas: React.FC<CanvasProps> = ({
     actions,
     onDraw,
     onCursorMove,
+    onMoveAction,
     remoteCursors,
     onActionsChange,
-    backgroundColor = '#0f0f1a', // Default fallback
+    backgroundColor = '#0f0f1a',
     isDarkTheme = true,
     isFilled = false,
 }) => {
@@ -40,6 +43,12 @@ export const Canvas: React.FC<CanvasProps> = ({
     const containerRef = useRef<HTMLDivElement>(null);
     const fpsRef = useRef({ frames: 0, lastTime: Date.now(), fps: 60 });
     const [fps, setFps] = useState(60);
+
+    // Select/Move state
+    const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragOffset, setDragOffset] = useState<Point>({ x: 0, y: 0 });
+    const dragStartRef = useRef<Point | null>(null);
 
     const { isDrawing, startDrawing, draw, stopDrawing, getCanvasCoordinates } = useDraw({
         onDraw,
@@ -57,6 +66,8 @@ export const Canvas: React.FC<CanvasProps> = ({
     const onCursorMoveRef = useRef(onCursorMove);
     const startDrawingRef = useRef(startDrawing);
     const stopDrawingRef = useRef(stopDrawing);
+    const currentToolRef = useRef(currentTool);
+    const actionsRef = useRef(actions);
 
     useEffect(() => {
         isDrawingRef.current = isDrawing;
@@ -65,7 +76,18 @@ export const Canvas: React.FC<CanvasProps> = ({
         onCursorMoveRef.current = onCursorMove;
         startDrawingRef.current = startDrawing;
         stopDrawingRef.current = stopDrawing;
-    }, [isDrawing, draw, getCanvasCoordinates, onCursorMove, startDrawing, stopDrawing]);
+        currentToolRef.current = currentTool;
+        actionsRef.current = actions;
+    }, [isDrawing, draw, getCanvasCoordinates, onCursorMove, startDrawing, stopDrawing, currentTool, actions]);
+
+    // Clear selection when switching away from select tool
+    useEffect(() => {
+        if (currentTool !== 'select') {
+            setSelectedActionId(null);
+            setIsDragging(false);
+            setDragOffset({ x: 0, y: 0 });
+        }
+    }, [currentTool]);
 
     // FPS counter
     useEffect(() => {
@@ -85,23 +107,140 @@ export const Canvas: React.FC<CanvasProps> = ({
         return () => cancelAnimationFrame(animationId);
     }, []);
 
-    // Redraw canvas when actions change
+    // Redraw canvas with selection highlight and drag preview
     useEffect(() => {
         const canvas = canvasRef.current;
         const ctx = canvas?.getContext('2d');
         if (!canvas || !ctx) return;
 
-        redrawCanvas(ctx, actions, CANVAS_WIDTH, CANVAS_HEIGHT);
-    }, [actions]);
+        // Clear and redraw all actions
+        ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    // Add non-passive touch event listeners to prevent scrolling
+        actions.filter(a => !a.isUndone).forEach((action) => {
+            // If this is the selected action and we're dragging, draw with offset
+            if (isDragging && action.id === selectedActionId) {
+                const offsetAction: DrawAction = {
+                    ...action,
+                    points: action.points.map(p => ({
+                        x: p.x + dragOffset.x,
+                        y: p.y + dragOffset.y
+                    }))
+                };
+                drawAction(ctx, offsetAction);
+            } else {
+                drawAction(ctx, action);
+            }
+        });
+
+        // Draw selection highlight around the actual shape
+        if (selectedActionId) {
+            const selected = actions.find(a => a.id === selectedActionId && !a.isUndone);
+            if (selected && selected.points.length >= 2) {
+                const offsetX = isDragging ? dragOffset.x : 0;
+                const offsetY = isDragging ? dragOffset.y : 0;
+
+                const start = {
+                    x: selected.points[0].x + offsetX,
+                    y: selected.points[0].y + offsetY
+                };
+                const end = {
+                    x: selected.points[selected.points.length - 1].x + offsetX,
+                    y: selected.points[selected.points.length - 1].y + offsetY
+                };
+
+                ctx.save();
+                ctx.strokeStyle = '#6366f1';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 4]);
+
+                const padding = 8;
+
+                if (selected.tool === 'circle') {
+                    // Circle selection - draw circular outline
+                    const radius = Math.sqrt(Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2)) + padding;
+                    ctx.beginPath();
+                    ctx.arc(start.x, start.y, radius, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else if (selected.tool === 'triangle') {
+                    // Triangle selection
+                    const width = end.x - start.x;
+                    const top = { x: start.x + width / 2, y: start.y - padding };
+                    const bottomLeft = { x: start.x - padding, y: end.y + padding };
+                    const bottomRight = { x: end.x + padding, y: end.y + padding };
+                    ctx.beginPath();
+                    ctx.moveTo(top.x, top.y);
+                    ctx.lineTo(bottomLeft.x, bottomLeft.y);
+                    ctx.lineTo(bottomRight.x, bottomRight.y);
+                    ctx.closePath();
+                    ctx.stroke();
+                } else if (selected.tool === 'diamond') {
+                    // Diamond selection
+                    const centerX = (start.x + end.x) / 2;
+                    const centerY = (start.y + end.y) / 2;
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, start.y - padding);
+                    ctx.lineTo(end.x + padding, centerY);
+                    ctx.lineTo(centerX, end.y + padding);
+                    ctx.lineTo(start.x - padding, centerY);
+                    ctx.closePath();
+                    ctx.stroke();
+                } else if (selected.tool === 'line' || selected.tool === 'arrow') {
+                    // Line/Arrow selection - draw parallel lines
+                    const angle = Math.atan2(end.y - start.y, end.x - start.x);
+                    const perpX = Math.cos(angle + Math.PI / 2) * padding;
+                    const perpY = Math.sin(angle + Math.PI / 2) * padding;
+                    ctx.beginPath();
+                    ctx.moveTo(start.x + perpX, start.y + perpY);
+                    ctx.lineTo(end.x + perpX, end.y + perpY);
+                    ctx.lineTo(end.x - perpX, end.y - perpY);
+                    ctx.lineTo(start.x - perpX, start.y - perpY);
+                    ctx.closePath();
+                    ctx.stroke();
+                } else if (selected.tool === 'rectangle') {
+                    // Rectangle selection
+                    const minX = Math.min(start.x, end.x) - padding;
+                    const minY = Math.min(start.y, end.y) - padding;
+                    const maxX = Math.max(start.x, end.x) + padding;
+                    const maxY = Math.max(start.y, end.y) + padding;
+                    ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+                } else {
+                    // Brush/eraser strokes - use bounding box (no shape to follow)
+                    const xs = selected.points.map(p => p.x + offsetX);
+                    const ys = selected.points.map(p => p.y + offsetY);
+                    const minX = Math.min(...xs) - padding;
+                    const maxX = Math.max(...xs) + padding;
+                    const minY = Math.min(...ys) - padding;
+                    const maxY = Math.max(...ys) + padding;
+                    ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+                }
+
+                ctx.restore();
+            }
+        }
+    }, [actions, selectedActionId, isDragging, dragOffset]);
+
+    // Add non-passive touch event listeners
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
 
         const handleTouchStart = (e: TouchEvent) => {
             e.preventDefault();
-            startDrawingRef.current(e, canvas);
+            const position = getCanvasCoordinatesRef.current(e, canvas);
+
+            if (currentToolRef.current === 'select') {
+                const found = findActionAtPoint(actionsRef.current, position);
+                if (found) {
+                    setSelectedActionId(found.id);
+                    setIsDragging(true);
+                    dragStartRef.current = position;
+                    setDragOffset({ x: 0, y: 0 });
+                } else {
+                    setSelectedActionId(null);
+                }
+            } else {
+                startDrawingRef.current(e, canvas);
+            }
         };
 
         const handleTouchMove = (e: TouchEvent) => {
@@ -112,17 +251,48 @@ export const Canvas: React.FC<CanvasProps> = ({
             const position = getCanvasCoordinatesRef.current(e, canvas);
             onCursorMoveRef.current(position);
 
-            if (isDrawingRef.current) {
+            if (currentToolRef.current === 'select' && isDragging && dragStartRef.current) {
+                setDragOffset({
+                    x: position.x - dragStartRef.current.x,
+                    y: position.y - dragStartRef.current.y
+                });
+            } else if (isDrawingRef.current) {
                 drawRef.current(e, canvas, ctx);
             }
         };
 
         const handleTouchEnd = (e: TouchEvent) => {
             e.preventDefault();
-            stopDrawingRef.current();
+            if (currentToolRef.current === 'select' && isDragging && selectedActionId && dragStartRef.current) {
+                const position = getCanvasCoordinatesRef.current(e, canvas);
+                const deltaX = position.x - dragStartRef.current.x;
+                const deltaY = position.y - dragStartRef.current.y;
+
+                if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+                    // Optimistic local update
+                    const updatedActions = actionsRef.current.map(action => {
+                        if (action.id === selectedActionId) {
+                            return {
+                                ...action,
+                                points: action.points.map(p => ({
+                                    x: p.x + deltaX,
+                                    y: p.y + deltaY
+                                }))
+                            };
+                        }
+                        return action;
+                    });
+                    onActionsChange(updatedActions);
+                    onMoveAction?.(selectedActionId, deltaX, deltaY);
+                }
+                setIsDragging(false);
+                setDragOffset({ x: 0, y: 0 });
+                dragStartRef.current = null;
+            } else {
+                stopDrawingRef.current();
+            }
         };
 
-        // Add event listeners with { passive: false } to allow preventDefault
         canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
         canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
         canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
@@ -134,16 +304,31 @@ export const Canvas: React.FC<CanvasProps> = ({
             canvas.removeEventListener('touchend', handleTouchEnd);
             canvas.removeEventListener('touchcancel', handleTouchEnd);
         };
-    }, []);
+    }, [isDragging, selectedActionId, onMoveAction]);
 
-    // Handle mouse events
+    // Mouse event handlers
     const handlePointerDown = useCallback(
         (e: React.MouseEvent) => {
             const canvas = canvasRef.current;
             if (!canvas) return;
-            startDrawing(e.nativeEvent, canvas);
+
+            const position = getCanvasCoordinates(e.nativeEvent, canvas);
+
+            if (currentTool === 'select') {
+                const found = findActionAtPoint(actions, position);
+                if (found) {
+                    setSelectedActionId(found.id);
+                    setIsDragging(true);
+                    dragStartRef.current = position;
+                    setDragOffset({ x: 0, y: 0 });
+                } else {
+                    setSelectedActionId(null);
+                }
+            } else {
+                startDrawing(e.nativeEvent, canvas);
+            }
         },
-        [startDrawing]
+        [currentTool, actions, startDrawing, getCanvasCoordinates]
     );
 
     const handlePointerMove = useCallback(
@@ -155,39 +340,69 @@ export const Canvas: React.FC<CanvasProps> = ({
             const position = getCanvasCoordinates(e.nativeEvent, canvas);
             onCursorMove(position);
 
-            if (isDrawing) {
+            if (currentTool === 'select' && isDragging && dragStartRef.current) {
+                setDragOffset({
+                    x: position.x - dragStartRef.current.x,
+                    y: position.y - dragStartRef.current.y
+                });
+            } else if (isDrawing) {
                 draw(e.nativeEvent, canvas, ctx);
             }
         },
-        [isDrawing, draw, getCanvasCoordinates, onCursorMove]
+        [currentTool, isDragging, isDrawing, draw, getCanvasCoordinates, onCursorMove]
     );
 
-    const handlePointerUp = useCallback(() => {
-        stopDrawing();
-    }, [stopDrawing]);
+    const handlePointerUp = useCallback(
+        (e: React.MouseEvent) => {
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+
+            if (currentTool === 'select' && isDragging && selectedActionId && dragStartRef.current) {
+                const position = getCanvasCoordinates(e.nativeEvent, canvas);
+                const deltaX = position.x - dragStartRef.current.x;
+                const deltaY = position.y - dragStartRef.current.y;
+
+                if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+                    // Optimistic local update - update the action immediately to prevent flicker
+                    const updatedActions = actions.map(action => {
+                        if (action.id === selectedActionId) {
+                            return {
+                                ...action,
+                                points: action.points.map(p => ({
+                                    x: p.x + deltaX,
+                                    y: p.y + deltaY
+                                }))
+                            };
+                        }
+                        return action;
+                    });
+                    onActionsChange(updatedActions);
+
+                    // Then send to server for sync with other users
+                    onMoveAction?.(selectedActionId, deltaX, deltaY);
+                }
+
+                // Reset drag state AFTER updating actions
+                setIsDragging(false);
+                setDragOffset({ x: 0, y: 0 });
+                dragStartRef.current = null;
+            } else {
+                stopDrawing();
+            }
+        },
+        [currentTool, isDragging, selectedActionId, actions, stopDrawing, getCanvasCoordinates, onMoveAction, onActionsChange]
+    );
 
     const handlePointerLeave = useCallback(() => {
         if (isDrawing) {
             stopDrawing();
         }
-    }, [isDrawing, stopDrawing]);
-
-    // Handle incoming remote draw action (kept for potential external use)
-    const handleRemoteDrawAction = useCallback(
-        (action: DrawAction) => {
-            const canvas = canvasRef.current;
-            const ctx = canvas?.getContext('2d');
-            if (!canvas || !ctx) return;
-
-            drawAction(ctx, action);
-            onActionsChange([...actions, action]);
-        },
-        [actions, onActionsChange]
-    );
-
-    useEffect(() => {
-        // This effect can be used to handle external updates
-    }, [handleRemoteDrawAction]);
+        if (isDragging) {
+            setIsDragging(false);
+            setDragOffset({ x: 0, y: 0 });
+            dragStartRef.current = null;
+        }
+    }, [isDrawing, isDragging, stopDrawing]);
 
     const containerStyle: React.CSSProperties = {
         position: 'relative',
@@ -205,7 +420,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         height: '100%',
         objectFit: 'fill',
         backgroundColor,
-        cursor: 'crosshair',
+        cursor: currentTool === 'select' ? (isDragging ? 'grabbing' : 'grab') : 'crosshair',
         touchAction: 'none',
         WebkitTouchCallout: 'none',
         WebkitUserSelect: 'none',
@@ -214,10 +429,8 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     return (
         <div ref={containerRef} style={containerStyle}>
-            {/* FPS Counter */}
             <FPSCounter fps={fps} isDarkTheme={isDarkTheme} />
 
-            {/* Main Canvas */}
             <canvas
                 ref={canvasRef}
                 width={CANVAS_WIDTH}
@@ -229,7 +442,6 @@ export const Canvas: React.FC<CanvasProps> = ({
                 onMouseLeave={handlePointerLeave}
             />
 
-            {/* Remote Cursors */}
             <RemoteCursorOverlay
                 remoteCursors={remoteCursors}
                 canvasRef={canvasRef}

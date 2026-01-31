@@ -37,6 +37,7 @@ interface DesktopLayoutProps {
     setActions: (actions: DrawAction[]) => void;
     handleDraw: (action: DrawAction) => void;
     handleCursorMove: (point: Point) => void;
+    handleMoveAction?: (actionId: string, deltaX: number, deltaY: number) => void;
 
     // Action Handlers
     toggleTheme: () => void;
@@ -64,7 +65,7 @@ export const DesktopLayout: React.FC<DesktopLayoutProps> = ({
     theme, isDarkTheme, latency, users, rooms, currentRoom, currentUserId,
     showClearModal, setShowClearModal,
     currentTool, currentColor, strokeWidth, isFilled, actions, remoteCursors, canUndo, canRedo,
-    setCurrentTool, setCurrentColor, setStrokeWidth, setIsFilled, setActions, handleDraw, handleCursorMove,
+    setCurrentTool, setCurrentColor, setStrokeWidth, setIsFilled, setActions, handleDraw, handleCursorMove, handleMoveAction,
     toggleTheme, handleUndo, handleRedo, handleClear, confirmClear, handleSave, handleDownload,
     joinRoom, handleCreateRoom, handleLeave,
     chatMessages, isChatOpen, chatUnreadCount, sendChatMessage, toggleChat, setChatOpen, userColor
@@ -116,6 +117,7 @@ export const DesktopLayout: React.FC<DesktopLayoutProps> = ({
                     actions={actions}
                     onDraw={handleDraw}
                     onCursorMove={handleCursorMove}
+                    onMoveAction={handleMoveAction}
                     remoteCursors={remoteCursors}
                     onActionsChange={setActions}
                     backgroundColor={theme.canvasBg}

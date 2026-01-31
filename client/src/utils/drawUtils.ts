@@ -158,3 +158,124 @@ export function redrawCanvas(
     // Redraw all non-undone actions
     actions.filter((a) => !a.isUndone).forEach((action) => drawAction(ctx, action));
 }
+
+// Hit detection - check if a point is inside an action's bounds
+export function hitTestAction(action: DrawAction, point: Point, tolerance: number = 10): boolean {
+    if (action.isUndone) return false;
+    if (action.points.length < 2) return false;
+
+    const start = action.points[0];
+    const end = action.points[action.points.length - 1];
+
+    if (action.type === 'stroke') {
+        // For strokes, check distance to any segment
+        for (let i = 0; i < action.points.length - 1; i++) {
+            const dist = distanceToSegment(point, action.points[i], action.points[i + 1]);
+            if (dist <= tolerance + action.strokeWidth / 2) return true;
+        }
+        return false;
+    }
+
+    if (action.tool === 'rectangle') {
+        const minX = Math.min(start.x, end.x);
+        const maxX = Math.max(start.x, end.x);
+        const minY = Math.min(start.y, end.y);
+        const maxY = Math.max(start.y, end.y);
+        return point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY;
+    }
+
+    if (action.tool === 'circle') {
+        const radius = Math.sqrt(Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2));
+        const dist = Math.sqrt(Math.pow(point.x - start.x, 2) + Math.pow(point.y - start.y, 2));
+        return dist <= radius;
+    }
+
+    if (action.tool === 'triangle') {
+        const width = end.x - start.x;
+        const top = { x: start.x + width / 2, y: start.y };
+        const bottomLeft = { x: start.x, y: end.y };
+        const bottomRight = { x: end.x, y: end.y };
+        return pointInTriangle(point, top, bottomLeft, bottomRight);
+    }
+
+    if (action.tool === 'diamond') {
+        const centerX = (start.x + end.x) / 2;
+        const centerY = (start.y + end.y) / 2;
+        const top = { x: centerX, y: start.y };
+        const right = { x: end.x, y: centerY };
+        const bottom = { x: centerX, y: end.y };
+        const left = { x: start.x, y: centerY };
+        // Diamond is two triangles
+        return pointInTriangle(point, top, right, left) || pointInTriangle(point, bottom, right, left);
+    }
+
+    if (action.tool === 'line' || action.tool === 'arrow') {
+        const dist = distanceToSegment(point, start, end);
+        return dist <= tolerance + action.strokeWidth / 2;
+    }
+
+    return false;
+}
+
+// Distance from point to line segment
+function distanceToSegment(p: Point, a: Point, b: Point): number {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const lengthSq = dx * dx + dy * dy;
+
+    if (lengthSq === 0) {
+        return Math.sqrt(Math.pow(p.x - a.x, 2) + Math.pow(p.y - a.y, 2));
+    }
+
+    let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSq;
+    t = Math.max(0, Math.min(1, t));
+
+    const nearestX = a.x + t * dx;
+    const nearestY = a.y + t * dy;
+
+    return Math.sqrt(Math.pow(p.x - nearestX, 2) + Math.pow(p.y - nearestY, 2));
+}
+
+// Check if point is inside triangle using barycentric coordinates
+function pointInTriangle(p: Point, a: Point, b: Point, c: Point): boolean {
+    const v0x = c.x - a.x;
+    const v0y = c.y - a.y;
+    const v1x = b.x - a.x;
+    const v1y = b.y - a.y;
+    const v2x = p.x - a.x;
+    const v2y = p.y - a.y;
+
+    const dot00 = v0x * v0x + v0y * v0y;
+    const dot01 = v0x * v1x + v0y * v1y;
+    const dot02 = v0x * v2x + v0y * v2y;
+    const dot11 = v1x * v1x + v1y * v1y;
+    const dot12 = v1x * v2x + v1y * v2y;
+
+    const invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
+    const u = (dot11 * dot02 - dot01 * dot12) * invDenom;
+    const v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+
+    return u >= 0 && v >= 0 && u + v <= 1;
+}
+
+// Find action at point (returns the topmost one)
+export function findActionAtPoint(actions: DrawAction[], point: Point): DrawAction | null {
+    // Search from end (topmost) to beginning
+    for (let i = actions.length - 1; i >= 0; i--) {
+        if (hitTestAction(actions[i], point)) {
+            return actions[i];
+        }
+    }
+    return null;
+}
+
+// Move an action by delta
+export function moveAction(action: DrawAction, deltaX: number, deltaY: number): DrawAction {
+    return {
+        ...action,
+        points: action.points.map(p => ({
+            x: p.x + deltaX,
+            y: p.y + deltaY
+        }))
+    };
+}

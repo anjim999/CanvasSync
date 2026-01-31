@@ -63,6 +63,7 @@ export interface ClientToServerEvents {
     join_room: (data: { roomId: string; username: string }) => void;
     leave_room: () => void;
     draw_action: (action: DrawAction) => void;
+    move_action: (data: { actionId: string; deltaX: number; deltaY: number }) => void;
     cursor_move: (position: Point) => void;
     undo: () => void;
     redo: () => void;
@@ -80,6 +81,7 @@ export interface ServerToClientEvents {
     user_left: (userId: string) => void;
     users_update: (users: User[]) => void;
     draw_action: (action: DrawAction) => void;
+    action_moved: (data: { actionId: string; action: DrawAction }) => void;
     cursor_update: (data: { odId: string; position: Point }) => void;
     canvas_state: (state: CanvasState) => void;
     undo_applied: (data: { odId: string; actionId: string }) => void;
@@ -94,14 +96,18 @@ export interface ServerToClientEvents {
     chat_history: (messages: ChatMessage[]) => void;
 }
 
-// User cursor colors (assigned automatically)
+// User cursor colors (assigned automatically) - Vibrant, highly distinct palette
 export const USER_COLORS = [
-    '#ef4444',
-    '#22c55e',
-    '#3b82f6',
-    '#f59e0b',
-    '#8b5cf6',
-    '#ec4899',
-    '#06b6d4',
-    '#84cc16',
+    '#ef4444', // Red
+    '#3b82f6', // Blue  
+    '#22c55e', // Green
+    '#f59e0b', // Amber/Orange
+    '#8b5cf6', // Purple
+    '#ec4899', // Pink
+    '#06b6d4', // Cyan
+    '#f97316', // Bright Orange
+    '#14b8a6', // Teal
+    '#a855f7', // Violet
+    '#eab308', // Yellow
+    '#0ea5e9', // Sky Blue
 ];

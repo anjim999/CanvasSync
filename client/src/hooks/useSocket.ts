@@ -29,6 +29,7 @@ export function useSocket() {
     const onUndoApplied = useRef<((data: { odId: string; actionId: string }) => void) | null>(null);
     const onRedoApplied = useRef<((data: { odId: string; actionId: string }) => void) | null>(null);
     const onCanvasCleared = useRef<(() => void) | null>(null);
+    const onActionMoved = useRef<((data: { actionId: string; action: DrawAction }) => void) | null>(null);
 
     // Initialize socket connection
     useEffect(() => {
@@ -99,6 +100,10 @@ export function useSocket() {
             onCanvasCleared.current?.();
         });
 
+        socket.on('action_moved', (data) => {
+            onActionMoved.current?.(data);
+        });
+
         socket.on('error', (message) => {
             console.error('Socket error:', message);
         });
@@ -145,6 +150,13 @@ export function useSocket() {
     const sendDrawAction = useCallback((action: DrawAction) => {
         if (socket && currentRoom) {
             socket.emit('draw_action', action);
+        }
+    }, [currentRoom]);
+
+    // Move action (for select/move tool)
+    const sendMoveAction = useCallback((actionId: string, deltaX: number, deltaY: number) => {
+        if (socket && currentRoom) {
+            socket.emit('move_action', { actionId, deltaX, deltaY });
         }
     }, [currentRoom]);
 
@@ -236,5 +248,7 @@ export function useSocket() {
         onUndoApplied,
         onRedoApplied,
         onCanvasCleared,
+        onActionMoved,
+        sendMoveAction,
     };
 }

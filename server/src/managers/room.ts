@@ -34,6 +34,26 @@ export function getRoom(roomId: string): RoomState | undefined {
     return rooms.get(roomId);
 }
 
+// Simple hash function to generate consistent number from string
+function hashString(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    return Math.abs(hash);
+}
+
+// Get colors already in use in a room
+function getUsedColors(room: RoomState): Set<string> {
+    const used = new Set<string>();
+    for (const user of room.users.values()) {
+        used.add(user.color);
+    }
+    return used;
+}
+
 export function joinRoom(roomId: string, odId: string, username: string): User | null {
     let room = rooms.get(roomId);
 
@@ -43,9 +63,23 @@ export function joinRoom(roomId: string, odId: string, username: string): User |
         room = rooms.get(roomId)!;
     }
 
-    // Assign a color based on user count
-    const colorIndex = room.users.size % USER_COLORS.length;
-    const color = USER_COLORS[colorIndex];
+    // Get colors already used in this room
+    const usedColors = getUsedColors(room);
+
+    // Start with hash-based index for consistency, but find unused color
+    const baseIndex = hashString(username + odId);
+    let color = USER_COLORS[baseIndex % USER_COLORS.length];
+
+    // If color is already in use, find the first available one
+    if (usedColors.has(color)) {
+        for (let i = 0; i < USER_COLORS.length; i++) {
+            const candidateColor = USER_COLORS[i];
+            if (!usedColors.has(candidateColor)) {
+                color = candidateColor;
+                break;
+            }
+        }
+    }
 
     const user: User = {
         id: odId,

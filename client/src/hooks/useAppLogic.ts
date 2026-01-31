@@ -89,6 +89,7 @@ export function useAppLogic() {
         joinRoom,
         leaveRoom,
         sendDrawAction,
+        sendMoveAction,
         sendCursorMove,
         undo,
         redo,
@@ -103,6 +104,7 @@ export function useAppLogic() {
         onUndoApplied,
         onRedoApplied,
         onCanvasCleared,
+        onActionMoved,
     } = useSocket();
 
     const userId = getUserId();
@@ -196,6 +198,21 @@ export function useAppLogic() {
         };
     }, [onCanvasCleared]);
 
+    // Handle action moved (from select/move tool)
+    useEffect(() => {
+        onActionMoved.current = (data) => {
+            // Replace the action with the updated one from server
+            setActions((prev) =>
+                prev.map((action) => {
+                    if (action.id === data.actionId) {
+                        return data.action;
+                    }
+                    return action;
+                })
+            );
+        };
+    }, [onActionMoved]);
+
     // Remove cursor when user leaves
     useEffect(() => {
         const currentUserIds = new Set(users.map((u) => u.id));
@@ -217,6 +234,11 @@ export function useAppLogic() {
         undoStack.current.push(action);
         redoStack.current = [];
     }, [sendDrawAction]);
+
+    // Handle move action (for select/move tool)
+    const handleMoveAction = useCallback((actionId: string, deltaX: number, deltaY: number) => {
+        sendMoveAction(actionId, deltaX, deltaY);
+    }, [sendMoveAction]);
 
     const handleCursorMove = useCallback((position: Point) => {
         sendCursorMove(position);
@@ -290,7 +312,7 @@ export function useAppLogic() {
         showUserPanel, setShowUserPanel, showClearModal, setShowClearModal,
         currentTool, currentColor, strokeWidth, isFilled, actions, remoteCursors, canUndo, canRedo,
         setCurrentTool, setCurrentColor, setStrokeWidth, setIsFilled, setActions,
-        handleDraw, handleCursorMove,
+        handleDraw, handleCursorMove, handleMoveAction,
         toggleTheme, handleUndo, handleRedo, handleClear, confirmClear, handleSave, handleDownload,
         joinRoom, handleCreateRoom, handleLeave,
         chatMessages, isChatOpen, chatUnreadCount, sendChatMessage, toggleChat, setChatOpen, userColor,

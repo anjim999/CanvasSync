@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon --watch 'src/**/*.ts' --exec 'tsx' src/server.ts",
     "build": "npm install --include=dev && tsc",
-    "start": "node dist/server.js"
+    "start": "nodemon --watch 'src/**/*.ts' --exec 'tsx' src/server.ts"
   },
   "dependencies": {
     "cors": "^2.8.5",

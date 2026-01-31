@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Tool } from '../types';
 import {
+    MousePointer2,
     Brush,
     Eraser,
     Minus,
@@ -9,7 +10,6 @@ import {
     Circle,
     Triangle,
     Diamond,
-    Type,
 } from 'lucide-react';
 import { MobileToolbar } from './toolbar/MobileToolbar';
 import { DesktopToolbar } from './toolbar/DesktopToolbar';
@@ -37,6 +37,7 @@ interface ToolbarProps {
 
 export const Toolbar: React.FC<ToolbarProps> = (props) => {
     const tools: { id: Tool; icon: React.ElementType; label: string }[] = [
+        { id: 'select', icon: MousePointer2, label: 'Select & Move' },
         { id: 'brush', icon: Brush, label: 'Brush' },
         { id: 'eraser', icon: Eraser, label: 'Eraser' },
         { id: 'line', icon: Minus, label: 'Line' },
@@ -45,7 +46,6 @@ export const Toolbar: React.FC<ToolbarProps> = (props) => {
         { id: 'circle', icon: Circle, label: 'Circle' },
         { id: 'triangle', icon: Triangle, label: 'Triangle' },
         { id: 'diamond', icon: Diamond, label: 'Diamond' },
-        { id: 'text', icon: Type, label: 'Text' },
     ];
 
     if (props.isMobile) {

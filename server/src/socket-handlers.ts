@@ -6,6 +6,7 @@ import {
     getUserRoom,
     getCanvasState,
     addDrawAction,
+    moveActionById,
     undoAction,
     redoAction,
     clearCanvas,
@@ -78,6 +79,18 @@ export function setupSocketHandlers(io: SocketIO): void {
             if (addDrawAction(roomId, action)) {
                 // Broadcast to all OTHER users in the room
                 socket.to(roomId).emit('draw_action', action);
+            }
+        });
+
+        // Move action (for select/move tool)
+        socket.on('move_action', ({ actionId, deltaX, deltaY }) => {
+            const roomId = getUserRoom(socket.id);
+            if (!roomId) return;
+
+            const updatedAction = moveActionById(roomId, actionId, deltaX, deltaY);
+            if (updatedAction) {
+                // Broadcast the full updated action to all users in room
+                io.to(roomId).emit('action_moved', { actionId, action: updatedAction });
             }
         });
 

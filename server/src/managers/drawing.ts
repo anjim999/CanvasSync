@@ -87,3 +87,20 @@ export function updateUserCursor(odId: string, x: number, y: number): void {
         user.cursor = { x, y };
     }
 }
+
+// Move an action by delta (for select/move tool) - returns the updated action
+export function moveActionById(roomId: string, actionId: string, deltaX: number, deltaY: number): DrawAction | null {
+    const room = rooms.get(roomId);
+    if (!room) return null;
+
+    const action = room.actions.find(a => a.id === actionId);
+    if (!action || action.isUndone) return null;
+
+    // Update all points by the delta
+    action.points = action.points.map(p => ({
+        x: p.x + deltaX,
+        y: p.y + deltaY
+    }));
+
+    return action;
+}
