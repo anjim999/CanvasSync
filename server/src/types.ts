@@ -60,7 +60,7 @@ export interface CanvasState {
 
 // WebSocket Events - Client to Server
 export interface ClientToServerEvents {
-    join_room: (data: { roomId: string; username: string }) => void;
+    join_room: (data: { roomId: string; username: string; clientId: string }) => void;
     leave_room: () => void;
     draw_action: (action: DrawAction) => void;
     move_action: (data: { actionId: string; deltaX: number; deltaY: number }) => void;

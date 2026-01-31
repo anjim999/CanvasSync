@@ -31,15 +31,20 @@ export function setupSocketHandlers(io: SocketIO): void {
         socket.emit('rooms_list', getRooms());
 
         // Join a room
-        socket.on('join_room', ({ roomId, username }) => {
-            const user = joinRoom(roomId, socket.id, username);
+        socket.on('join_room', ({ roomId, username, clientId }) => {
+            // Use client-provided persistent ID instead of socket.id for user identity
+            const userId = clientId || socket.id;
+            const user = joinRoom(roomId, userId, username);
             if (!user) {
                 socket.emit('error', 'Failed to join room');
                 return;
             }
 
+            // Store mapping from socket.id to userId for other handlers
+            (socket as any).userId = userId;
+
             socket.join(roomId);
-            console.log(`👤 ${username} joined room: ${roomId}`);
+            console.log(`👤 ${username} (${userId}) joined room: ${roomId}`);
 
             // Notify others in the room
             socket.to(roomId).emit('user_joined', user);
@@ -60,21 +65,23 @@ export function setupSocketHandlers(io: SocketIO): void {
 
         // Leave room
         socket.on('leave_room', () => {
-            const roomId = leaveRoom(socket.id);
+            const userId = (socket as any).userId || socket.id;
+            const roomId = leaveRoom(userId);
             if (roomId) {
                 socket.leave(roomId);
-                socket.to(roomId).emit('user_left', socket.id);
+                socket.to(roomId).emit('user_left', userId);
                 io.to(roomId).emit('users_update', getUsers(roomId));
             }
         });
 
         // Drawing action
         socket.on('draw_action', (action) => {
-            const roomId = getUserRoom(socket.id);
+            const userId = (socket as any).userId || socket.id;
+            const roomId = getUserRoom(userId);
             if (!roomId) return;
 
             // Ensure the action has the correct user ID
-            action.odId = socket.id;
+            action.odId = userId;
 
             if (addDrawAction(roomId, action)) {
                 // Broadcast to all OTHER users in the room
@@ -84,7 +91,8 @@ export function setupSocketHandlers(io: SocketIO): void {
 
         // Move action (for select/move tool)
         socket.on('move_action', ({ actionId, deltaX, deltaY }) => {
-            const roomId = getUserRoom(socket.id);
+            const userId = (socket as any).userId || socket.id;
+            const roomId = getUserRoom(userId);
             if (!roomId) return;
 
             const updatedAction = moveActionById(roomId, actionId, deltaX, deltaY);
@@ -96,28 +104,30 @@ export function setupSocketHandlers(io: SocketIO): void {
 
         // Cursor movement
         socket.on('cursor_move', (position) => {
-            const roomId = getUserRoom(socket.id);
+            const userId = (socket as any).userId || socket.id;
+            const roomId = getUserRoom(userId);
             if (!roomId) return;
 
-            updateUserCursor(socket.id, position.x, position.y);
+            updateUserCursor(userId, position.x, position.y);
 
             // Broadcast cursor position to others
             socket.to(roomId).emit('cursor_update', {
-                odId: socket.id,
+                odId: userId,
                 position,
             });
         });
 
         // Undo
         socket.on('undo', () => {
-            const roomId = getUserRoom(socket.id);
+            const userId = (socket as any).userId || socket.id;
+            const roomId = getUserRoom(userId);
             if (!roomId) return;
 
-            const undoneAction = undoAction(roomId, socket.id);
+            const undoneAction = undoAction(roomId, userId);
             if (undoneAction) {
                 // Broadcast undo to all users in room (including sender)
                 io.to(roomId).emit('undo_applied', {
-                    odId: socket.id,
+                    odId: userId,
                     actionId: undoneAction.id,
                 });
             }
@@ -125,13 +135,14 @@ export function setupSocketHandlers(io: SocketIO): void {
 
         // Redo
         socket.on('redo', () => {
-            const roomId = getUserRoom(socket.id);
+            const userId = (socket as any).userId || socket.id;
+            const roomId = getUserRoom(userId);
             if (!roomId) return;
 
-            const redoneAction = redoAction(roomId, socket.id);
+            const redoneAction = redoAction(roomId, userId);
             if (redoneAction) {
                 io.to(roomId).emit('redo_applied', {
-                    odId: socket.id,
+                    odId: userId,
                     actionId: redoneAction.id,
                 });
             }
@@ -139,11 +150,12 @@ export function setupSocketHandlers(io: SocketIO): void {
 
         // Clear canvas
         socket.on('clear_canvas', () => {
-            const roomId = getUserRoom(socket.id);
+            const userId = (socket as any).userId || socket.id;
+            const roomId = getUserRoom(userId);
             if (!roomId) return;
 
             if (clearCanvas(roomId)) {
-                io.to(roomId).emit('canvas_cleared', socket.id);
+                io.to(roomId).emit('canvas_cleared', userId);
             }
         });
 
@@ -162,7 +174,8 @@ export function setupSocketHandlers(io: SocketIO): void {
 
         // Save canvas
         socket.on('save_canvas', () => {
-            const roomId = getUserRoom(socket.id);
+            const userId = (socket as any).userId || socket.id;
+            const roomId = getUserRoom(userId);
             if (!roomId) return;
 
             if (saveCanvas(roomId)) {
@@ -196,10 +209,11 @@ export function setupSocketHandlers(io: SocketIO): void {
 
         // Disconnect
         socket.on('disconnect', () => {
-            console.log(`❌ User disconnected: ${socket.id}`);
-            const roomId = leaveRoom(socket.id);
+            const userId = (socket as any).userId || socket.id;
+            console.log(`❌ User disconnected: ${userId}`);
+            const roomId = leaveRoom(userId);
             if (roomId) {
-                socket.to(roomId).emit('user_left', socket.id);
+                socket.to(roomId).emit('user_left', userId);
                 io.to(roomId).emit('users_update', getUsers(roomId));
             }
         });

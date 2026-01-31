@@ -15,6 +15,20 @@ import { config } from '../config/env';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let socket: Socket<ServerToClientEvents, ClientToServerEvents> | null = null;
 
+// Generate or get persistent client ID from sessionStorage (per-tab, survives refresh)
+function getOrCreateClientId(): string {
+    const storageKey = 'canvasync-client-id';
+    let clientId = sessionStorage.getItem(storageKey);
+    if (!clientId) {
+        clientId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+        sessionStorage.setItem(storageKey, clientId);
+    }
+    return clientId;
+}
+
+// Persistent client ID (set once on module load)
+const persistentClientId = getOrCreateClientId();
+
 export function useSocket() {
     const [isConnected, setIsConnected] = useState(false);
     const [users, setUsers] = useState<User[]>([]);
@@ -132,7 +146,7 @@ export function useSocket() {
     // Join a room
     const joinRoom = useCallback((roomId: string, username: string) => {
         if (socket && isConnected) {
-            socket.emit('join_room', { roomId, username });
+            socket.emit('join_room', { roomId, username, clientId: persistentClientId });
             setCurrentRoom(roomId);
         }
     }, [isConnected]);
@@ -215,9 +229,9 @@ export function useSocket() {
         }
     }, [isConnected]);
 
-    // Get current user ID
+    // Get current user ID (uses persistent client ID, not socket ID)
     const getUserId = useCallback(() => {
-        return socket?.id || null;
+        return persistentClientId;
     }, []);
 
     // Get raw socket for other hooks (like useChat)
